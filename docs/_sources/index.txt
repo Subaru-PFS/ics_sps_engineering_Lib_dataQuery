@@ -1,0 +1,20 @@
+Welcome to PFS_AIT_CU_TOOLS's documentation!
+============================================
+
+Contents:
+
+.. toctree::
+    :  maxdepth: 2
+
+    setup
+    plotdata
+    monitordata
+    jabberbot
+
+Indices and tables
+==================
+
+* :ref:`genindex`
+* :ref:`modindex`
+* :ref:`search`
+

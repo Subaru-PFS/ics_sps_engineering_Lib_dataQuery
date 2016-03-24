@@ -1,0 +1,193 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>ics_sps_engineering_JabberBot &mdash; PFS_AIT_CU_TOOLS 0.1 documentation</title>
+    
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '0.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="PFS_AIT_CU_TOOLS 0.1 documentation" href="index.html" />
+    <link rel="prev" title="ics_sps_engineering_monitorData" href="monitordata.html" />
+   
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9">
+
+  </head>
+  <body role="document">  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="ics-sps-engineering-jabberbot">
+<h1>ics_sps_engineering_JabberBot<a class="headerlink" href="#ics-sps-engineering-jabberbot" title="Permalink to this headline">¶</a></h1>
+<p>ics_sps_engineering_JabberBot is a bot using XMPP protocol which allow users to get instrument&#8217;s status and alarm from a smartphone or a web browser</p>
+<div class="section" id="how-to-run">
+<h2>How to run ?<a class="headerlink" href="#how-to-run" title="Permalink to this headline">¶</a></h2>
+<p><strong>First</strong>, If you&#8217;re planning to begin a real-time data monitoring, please be sure that :</p>
+<blockquote>
+<div><ul class="simple">
+<li>Tron is started</li>
+<li>Ics_archiver is running</li>
+</ul>
+</div></blockquote>
+<p>Launch the following command from a terminal :</p>
+<blockquote>
+<div><p><strong>python main.py ip_database port_database</strong></p>
+<p>Example : <em>python main.py 10.1.1.1 5432</em></p>
+</div></blockquote>
+<p>By default if arguments are not provided :</p>
+<blockquote>
+<div><ul class="simple">
+<li>ip_database : <em>localhost</em></li>
+<li>port_database : <em>5432</em></li>
+</ul>
+</div></blockquote>
+</div>
+<div class="section" id="configuration">
+<h2>Configuration<a class="headerlink" href="#configuration" title="Permalink to this headline">¶</a></h2>
+<p>Tested on :</p>
+<blockquote>
+<div><ul class="simple">
+<li>Android ( Xabber )</li>
+<li>iOS ( Monal )</li>
+</ul>
+</div></blockquote>
+<div class="section" id="requirements">
+<h3>Requirements<a class="headerlink" href="#requirements" title="Permalink to this headline">¶</a></h3>
+<blockquote>
+<div><ul class="simple">
+<li>Create an account for the Bot on a XMPP server.</li>
+<li>Fill JID and PASSWORD fields in <em>main.py</em></li>
+<li>Each user must create an account on the same server</li>
+<li>Each user must be added as <em>friend</em> on the Bot account.</li>
+</ul>
+</div></blockquote>
+</div>
+</div>
+<div class="section" id="functionalities">
+<h2>Functionalities<a class="headerlink" href="#functionalities" title="Permalink to this headline">¶</a></h2>
+<img alt="_images/jabberbot.png" src="_images/jabberbot.png" />
+<p>You can send messages to the Bot, they will be interpreted as command and the JabberBot will answer your request.</p>
+<blockquote>
+<div><strong>Type Help</strong> for a list of available commands</div></blockquote>
+<div class="section" id="alarm">
+<h3>Alarm<a class="headerlink" href="#alarm" title="Permalink to this headline">¶</a></h3>
+<p>You can subscribe/unsubscribe to the Alarm by sending <em>Alarm_on/Alarm_off</em></p>
+<p>There are four types of alarms :</p>
+<blockquote>
+<div><ul class="simple">
+<li>Ion gauge pressure &lt; 1e-4 Torr</li>
+<li>Turbo speed &lt; 90000 RPM</li>
+<li>Gatevalve closed</li>
+<li>Cooler power &lt; 70 W or &gt; 245 W.</li>
+</ul>
+</div></blockquote>
+<p>If an Alarm is activated :</p>
+<p>Alarm&#8217;s subscribers will received every minutes an alert message until someone sends an acknowledgement message :</p>
+<blockquote>
+<div><strong>alarm_ack</strong> <em>pressure|turbo|gatevalve|cooler</em></div></blockquote>
+<p>Then when the problem is fixed, the alarm can be rearmed by sending :</p>
+<blockquote>
+<div><strong>alarm_rearm</strong> <em>pressure|turbo|gatevalve|cooler</em></div></blockquote>
+</div>
+</div>
+<div class="section" id="troubleshooting">
+<h2>Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permalink to this headline">¶</a></h2>
+<p>I experienced some trouble to launch the Bot on Fedora.</p>
+<p>I found the patch on this link.</p>
+<p><a class="reference external" href="https://raw.githubusercontent.com/freebsd/freebsd-ports/master/net-im/py-XMPPpy/files/patch-XMPP-transports.py">https://raw.githubusercontent.com/freebsd/freebsd-ports/master/net-im/py-XMPPpy/files/patch-XMPP-transports.py</a></p>
+<p>I made the change on <em>/usr/lib/python2.7/site-packages/XMPP/transport.py</em> and it worked.</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">ics_sps_engineering_JabberBot</a><ul>
+<li><a class="reference internal" href="#how-to-run">How to run ?</a></li>
+<li><a class="reference internal" href="#configuration">Configuration</a><ul>
+<li><a class="reference internal" href="#requirements">Requirements</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#functionalities">Functionalities</a><ul>
+<li><a class="reference internal" href="#alarm">Alarm</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#troubleshooting">Troubleshooting</a></li>
+</ul>
+</li>
+</ul>
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="monitordata.html" title="previous chapter">ics_sps_engineering_monitorData</a></li>
+  </ul></li>
+</ul>
+</div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/jabberbot.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2016, Arnaud Le Fur.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.3.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.6</a>
+      
+      |
+      <a href="_sources/jabberbot.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

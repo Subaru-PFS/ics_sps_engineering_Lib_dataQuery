@@ -1,0 +1,95 @@
+*********************
+ics_sps_engineering_JabberBot
+*********************
+
+
+ics_sps_engineering_JabberBot is a bot using XMPP protocol which allow users to get instrument's status and alarm from a smartphone or a web browser
+
+
+How to run ?
+************
+
+**First**, If you're planning to begin a real-time data monitoring, please be sure that :
+
+ * Tron is started
+
+ * Ics_archiver is running
+
+Launch the following command from a terminal :
+
+ **python main.py ip_database port_database**
+
+ Example : *python main.py 10.1.1.1 5432*
+
+By default if arguments are not provided :
+
+ * ip_database : *localhost*
+
+ * port_database : *5432*
+
+Configuration
+*************
+
+Tested on :
+
+ * Android ( Xabber )
+
+ * iOS ( Monal )
+
+
+Requirements
+============
+
+ * Create an account for the Bot on a XMPP server.
+
+ * Fill JID and PASSWORD fields in *main.py*
+
+ * Each user must create an account on the same server
+
+ * Each user must be added as *friend* on the Bot account.
+
+
+Functionalities
+***************
+
+.. image:: _static/jabberbot.png
+
+You can send messages to the Bot, they will be interpreted as command and the JabberBot will answer your request.
+
+ **Type Help** for a list of available commands
+
+Alarm
+=====
+
+You can subscribe/unsubscribe to the Alarm by sending *Alarm_on/Alarm_off*
+
+There are four types of alarms :
+
+ * Ion gauge pressure < 1e-4 Torr
+
+ * Turbo speed < 90000 RPM
+
+ * Gatevalve closed
+
+ * Cooler power < 70 W or > 245 W.
+
+If an Alarm is activated :
+
+Alarm's subscribers will received every minutes an alert message until someone sends an acknowledgement message :
+
+ **alarm_ack** *pressure|turbo|gatevalve|cooler*
+
+Then when the problem is fixed, the alarm can be rearmed by sending :
+
+ **alarm_rearm** *pressure|turbo|gatevalve|cooler*
+
+Troubleshooting
+***************
+
+I experienced some trouble to launch the Bot on Fedora.
+
+I found the patch on this link.
+
+https://raw.githubusercontent.com/freebsd/freebsd-ports/master/net-im/py-XMPPpy/files/patch-XMPP-transports.py
+
+I made the change on */usr/lib/python2.7/site-packages/XMPP/transport.py* and it worked.
