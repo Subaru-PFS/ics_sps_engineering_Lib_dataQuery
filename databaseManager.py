@@ -1,5 +1,6 @@
 import datetime as dt
 import csv
+
 import pytz
 import psycopg2
 from matplotlib.dates import date2num, num2date
@@ -60,7 +61,6 @@ class databaseManager():
                 return self.getrowrelative2Date(tableName, keyword, -1)
 
     def getData(self, tableName, keyword, id_inf=0, id_sup="Now", convert=True):
-        t0 = dt.datetime.now()
         request = """select id, tai, %s from reply_raw inner join %s on %s.raw_id=reply_raw.id where (%s.raw_id>%i) order by id asc""" % (
             keyword, tableName, tableName, tableName,
             id_inf) if id_sup == "Now" else  """select id, tai, %s from reply_raw inner join %s on %s.raw_id=reply_raw.id where (%s.raw_id>%i and %s.raw_id<=%i) order by id asc""" % (
@@ -83,7 +83,6 @@ class databaseManager():
                 data_date[i] = self.convertfromAstro(data[1]) if convert else data[1]
                 data_values[i] = data[2:]
             if convert:
-                print (dt.datetime.now()-t0).total_seconds()
                 return data_id[-1], data_date, data_values
             else:
                 return data_id, data_date, data_values
@@ -193,7 +192,7 @@ class databaseManager():
     def convertTimetoAstro(self, date):
         date_num = dt.datetime.strptime(date, "%d/%m/%Y %H:%M:%S")
         date_num = (date_num - dt.datetime(1970, 1, 1)).total_seconds()
-        date_num = AstroTime.fromtimestamp(date_num, tz = pytz.utc)
+        date_num = AstroTime.fromtimestamp(date_num, tz=pytz.utc)
         date_num = date_num.MJD() * 86400
         return date_num
 
