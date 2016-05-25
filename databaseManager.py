@@ -37,6 +37,9 @@ class databaseManager():
             self.reconnecting = False
         else:
             pass
+    def closeDatabase(self):
+        self.database.close()
+        self.conn.close()
 
     def getrowrelative2Date(self, tableName, keyword, date_num, force=False):
         if date_num is not -1:
