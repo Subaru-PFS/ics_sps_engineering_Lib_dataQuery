@@ -37,6 +37,7 @@ class databaseManager():
             self.reconnecting = False
         else:
             pass
+        
     def closeDatabase(self):
         self.database.close()
         self.conn.close()
@@ -135,77 +136,21 @@ class databaseManager():
         else:
             return 0, beginning, end
 
-    def getLabelledData(self, listofLabel, beginning=0, end="Now"):
-        if beginning != 0:
-            beginning = self.convertTimetoAstro(beginning)
-        if end != "Now":
-            end = self.convertTimetoAstro(end)
 
-        result = []
-        index = []
-        listTable = ["vistherm__lamtemps1", "vistherm__lamtemps2", "xcu_r1__temps"] if self.dbname == "archiver" else [
-            "vistherm__lamtemps1", "vistherm__lamtemps2"]
-        sizeTable = {"vistherm__lamtemps1": 8, "vistherm__lamtemps2": 9, "xcu_r1__temps": 12}
-        for label in listofLabel:
-            for table in listTable:
-                req = "select tai, val from reply_raw inner join ("
-                for i in range(sizeTable[table]):
-                    req += "select a.raw_id, b.val1_%i as pos, a.val1_%i as val from %s as a join %s as b on (a.raw_id=b.raw_id) union " % (
-                        i, i, table, '%s__%s' % (table.split('__')[0], table.split('__')[1].replace('t', 'n')))
-                req = req[:-7]
-                req += " ) as foo on foo.raw_id=reply_raw.id where pos='%s' and id>= %i and id<%i order by raw_id asc;" % (label, self.getrowrelative2Date(table, "id", beginning, force=True),self.getrowrelative2Date(table, "id", end, force=True))
-
-                try:
-                    self.database.execute(req)
-                except psycopg2.ProgrammingError:
-                    self.conn.rollback()
-                    return -2, -2
-                except (psycopg2.InterfaceError, psycopg2.DatabaseError) as e:
-                    self.reconnectDatabase()
-                    return -5, -5
-                data = self.database.fetchall()
-                if data:
-                    array = np.ones(len(data))
-                    time = np.ones(len(data))
-                    for i, dat in enumerate(data):
-                        time[i] = dat[0]
-                        array[i] = dat[1] if dat[1] < 1e3 else 'nan'
-
-                    if not result:
-                        result.append(time)
-                        index.append('Time')
-                    else:
-                        array = np.interp(result[0], time, array)
-                    result.append(array)
-                    index.append(label)
-
-        for i, t in enumerate(result[0]):
-            result[0][i] = self.convertfromAstro(t)
-
-        return DataFrame(result, index=index).transpose()
-
-    def extract2csv(self, tableName, keyword, label, beginning=0, end="Now", calibrate=False, path=""):
+    def extract2csv(self, tableName, keyword, label, beginning=0, end="Now",  path=""):
 
         id, dates, values = self.getDataBetween(tableName, keyword, beginning, end)
         if type(dates) == np.ndarray:
             if dates.any():
                 first_row = ["Time Stamp"]
                 first_row.extend(label.split(','))
-
-                if not calibrate:
-                    path += '%s.csv' % tableName
-                else:
-                    path += "%s_recorrected.csv" % tableName
-
+                path += '%s.csv' % tableName
                 with open(path, 'wb') as csvfile:
                     spamwriter = csv.writer(csvfile, delimiter=',',
                                             quotechar='|', quoting=csv.QUOTE_MINIMAL)
-
                     spamwriter.writerow(first_row)
                     for i, (date, value) in enumerate(zip(dates, values)):
                         row = [num2date(date).strftime("%d/%m/%Y %H:%M:%S")]
-                        if calibrate:
-                            value = self.recalibrateTemps(value)
 
                         format = "%.2f" if "pressure" not in tableName else "%.3e"
                         row.extend([format % val for val in value])
