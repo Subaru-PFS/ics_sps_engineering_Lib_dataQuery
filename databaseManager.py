@@ -4,7 +4,6 @@ import csv
 import pytz
 import psycopg2
 from matplotlib.dates import date2num, num2date
-from pandas import DataFrame
 import numpy as np
 
 from astrotime import AstroTime
@@ -26,6 +25,8 @@ class databaseManager():
             conn = psycopg2.connect(property)
             self.database = conn.cursor()
             self.conn = conn
+            self.database.execute("""select tai from reply_raw order by id asc limit 1""")
+            [(self.firstDate,)] = self.database.fetchall()
             return 1
         except psycopg2.OperationalError:
             return -1
@@ -37,34 +38,60 @@ class databaseManager():
             self.reconnecting = False
         else:
             pass
-        
+
     def closeDatabase(self):
         self.database.close()
         self.conn.close()
 
-    def getrowrelative2Date(self, tableName, keyword, date_num, force=False):
-        if date_num is not -1:
-            request = """select %s from reply_raw inner join %s on %s.raw_id=reply_raw.id WHERE tai > %f order by tai asc limit 1""" % (
-                keyword, tableName, tableName, date_num)
+    def getrowrelative2Date(self, tableName, keyword, date_num, force = False):
+
+        if date_num<self.firstDate:
+            return -4
         else:
-            request = """select %s from reply_raw inner join %s on %s.raw_id=reply_raw.id order by raw_id desc limit 1 """ % (
-                keyword, tableName, tableName)
-        try:
-            self.database.execute(request)
-        except psycopg2.ProgrammingError:
-            self.conn.rollback()
-            return -2
-        except (psycopg2.InterfaceError, psycopg2.DatabaseError) as e:
-            self.reconnectDatabase()
-            return -5
-        try:
-            [(row_result,)] = self.database.fetchall()
-            return row_result
-        except ValueError:
-            if not force:
+            try:
+                self.database.execute("""select raw_id from %s order by raw_id asc limit 1""" % tableName)
+            except psycopg2.ProgrammingError:
+                self.conn.rollback()
+                return -2
+            [(id_inf,)] = self.database.fetchall()
+            self.database.execute("""select raw_id from %s order by raw_id desc limit 1""" % tableName)
+            [(id_sup,)] = self.database.fetchall()
+            self.database.execute("""select id from reply_raw WHERE tai >= %f limit 1 """%date_num)
+            try:
+                [(close_id,)] = self.database.fetchall()
+            except ValueError:
                 return -4
+
+            if force:
+                if close_id<id_inf:
+                    request = """select %s from reply_raw inner join %s on %s.raw_id=reply_raw.id where id=%i""" % ( keyword, tableName, tableName, id_inf)
+                elif close_id>id_sup:
+                    request = """select %s from reply_raw inner join %s on %s.raw_id=reply_raw.id where id=%i""" % ( keyword, tableName, tableName, id_sup)
+                else:
+                    request = """select %s from reply_raw inner join %s on %s.raw_id=reply_raw.id WHERE tai >= %f limit 1""" % (keyword, tableName, tableName, date_num)
             else:
-                return self.getrowrelative2Date(tableName, keyword, -1)
+                if id_inf<close_id<=id_sup:
+                    request = """select %s from reply_raw inner join %s on %s.raw_id=reply_raw.id WHERE tai >= %f limit 1""" % (keyword, tableName, tableName, date_num)
+                else:
+                    return -4
+            try:
+                self.database.execute(request)
+            except psycopg2.ProgrammingError:
+                self.conn.rollback()
+                return -2
+            except (psycopg2.InterfaceError, psycopg2.DatabaseError) as e:
+                self.reconnectDatabase()
+                return -5
+            try:
+                [res] = self.database.fetchall()
+                if len(res)==1:
+                    return res[0]
+                else:
+                    return list(res)
+            except ValueError:
+                return -4
+
+
 
     def getData(self, tableName, keyword, id_inf=0, id_sup="Now", convert=True):
         request = """select id, tai, %s from reply_raw inner join %s on %s.raw_id=reply_raw.id where (%s.raw_id>%i) order by id asc""" % (
@@ -136,8 +163,7 @@ class databaseManager():
         else:
             return 0, beginning, end
 
-
-    def extract2csv(self, tableName, keyword, label, beginning=0, end="Now",  path=""):
+    def extract2csv(self, tableName, keyword, label, beginning=0, end="Now", path=""):
 
         id, dates, values = self.getDataBetween(tableName, keyword, beginning, end)
         if type(dates) == np.ndarray:
@@ -163,31 +189,10 @@ class databaseManager():
             return None
 
     def getDatafromDate(self, tableName, keyword, date):
-        id = self.getrowrelative2Date(tableName, "id", self.convertTimetoAstro(date))
-        if id not in [-1, -2, -3, -4]:
-            value = []
-            request = """select tai,%s from reply_raw inner join %s on %s.raw_id=reply_raw.id where raw_id = %s""" % (
-                keyword, tableName, tableName, id)
-            try:
-                self.database.execute(request)
-            except psycopg2.ProgrammingError:
-                self.conn.rollback()
-                return -2, -2
-            data = self.database.fetchall()
-            if data:
-                date = self.convertfromAstro(data[0][0])
-                if date != 0:
-                    date = num2date(date).strftime("%d/%m/%Y %H:%M:%S")
-                    for val in data[0][1:]:
-                        value.append(val)
-                    return date, value
-                else:
-                    return -3, -3
 
-            else:
-                return -4, -4
-        else:
-            return id, id
+        date = self.convertTimetoAstro(date)
+        return self.getrowrelative2Date(tableName, 'tai', date), self.getrowrelative2Date(tableName, keyword, date)
+
 
     def convertTimetoAstro(self, date):
         date_num = dt.datetime.strptime(date, "%d/%m/%Y %H:%M:%S")
