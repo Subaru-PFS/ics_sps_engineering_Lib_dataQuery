@@ -43,8 +43,8 @@ class databaseManager():
         self.database.close()
         self.conn.close()
 
-    def getrowrelative2Date(self, tableName, keyword, date_num, force=False):
-        if date_num != -1:
+    def getrowrelative2Date(self, tableName, keyword, date_num, force=False, redo=False):
+        if not redo:
             try:
                 self.database.execute("""select raw_id from %s order by raw_id asc limit 1""" % tableName)
             except psycopg2.ProgrammingError:
@@ -95,7 +95,7 @@ class databaseManager():
                 return np.asarray(res)
         except ValueError:
             if force:
-                return self.getrowrelative2Date(self, tableName, keyword, date_num=-1)
+                return self.getrowrelative2Date(tableName, keyword, date_num, force=False, redo=True)
             else:
                 return -4
 
