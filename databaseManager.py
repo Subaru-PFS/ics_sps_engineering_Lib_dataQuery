@@ -26,8 +26,7 @@ class databaseManager():
             conn = psycopg2.connect(property)
             self.database = conn.cursor()
             self.conn = conn
-            self.database.execute("""select tai from reply_raw order by id asc limit 1""")
-            return 1
+            return True
         except psycopg2.OperationalError:
             return -1
 
@@ -43,42 +42,11 @@ class databaseManager():
         self.database.close()
         self.conn.close()
 
-    def getrowrelative2Date(self, tableName, keyword, date_num, force=False, redo=False):
-        if not redo:
-            try:
-                self.database.execute("""select raw_id from %s order by raw_id asc limit 1""" % tableName)
-            except psycopg2.ProgrammingError:
-                self.conn.rollback()
-                return -2
-            [(id_inf,)] = self.database.fetchall()
-            self.database.execute("""select raw_id from %s order by raw_id desc limit 1""" % tableName)
-            [(id_sup,)] = self.database.fetchall()
-            self.database.execute(
-                """select id from reply_raw WHERE (tai >= %f and tai < %f) order by id asc limit 1 """ % (
-                    date_num, date_num + 60))
-            try:
-                [(close_id,)] = self.database.fetchall()
-            except ValueError:
-                return -4
-            if force:
-                if close_id < id_inf:
-                    request = """select %s from reply_raw inner join %s on %s.raw_id=reply_raw.id where id=%i""" % (
-                        keyword, tableName, tableName, id_inf)
-                elif close_id > id_sup:
-                    request = """select %s from reply_raw inner join %s on %s.raw_id=reply_raw.id where id=%i""" % (
-                        keyword, tableName, tableName, id_sup)
-                else:
-                    request = """select %s from reply_raw inner join %s on %s.raw_id=reply_raw.id WHERE (tai >= %f and tai < %f) order by id asc limit 1""" % (
-                        keyword, tableName, tableName, date_num, date_num + 120)
-            else:
-                if id_inf < close_id <= id_sup:
-                    request = """select %s from reply_raw inner join %s on %s.raw_id=reply_raw.id WHERE (tai >= %f and tai < %f) order by id asc limit 1""" % (
-                        keyword, tableName, tableName, date_num, date_num + 120)
-                else:
-                    return -4
-        else:
-            request = """select %s from reply_raw inner join %s on %s.raw_id=reply_raw.id WHERE tai >= %f order by id asc limit 1""" % (
-                keyword, tableName, tableName, date_num)
+    def getrowrelative2Date(self, tableName, keyword, date_num, force=False, i=0):
+
+        nb_sec = 3600
+        request = """select %s from reply_raw inner join %s on %s.raw_id=reply_raw.id WHERE (tai >= %f and tai < %f) order by id asc limit 1""" % (
+            keyword, tableName, tableName, date_num, date_num + nb_sec)
         try:
             self.database.execute(request)
         except psycopg2.ProgrammingError:
@@ -94,38 +62,59 @@ class databaseManager():
             else:
                 return np.asarray(res)
         except ValueError:
-            if force:
-                return self.getrowrelative2Date(tableName, keyword, date_num, force=False, redo=True)
+            if force and i == 0:
+                if self.tableIsInRange(tableName, date_num):
+                    return self.getrowrelative2Date(tableName, keyword, date_num+nb_sec, True, i + 1)
+                else:
+                    return -4
+            elif force and i < 23:
+                return self.getrowrelative2Date(tableName, keyword, date_num+nb_sec, True, i + 1)
             else:
                 return -4
 
-    def getData(self, tableName, keyword, id_inf=0, id_sup="Now", convert=True):
+    def tableIsInRange(self, tableName, date_num):
+
+        self.database.execute(
+            """select tai from reply_raw inner join %s on %s.raw_id=reply_raw.id order by raw_id asc limit 1""" % (
+            tableName, tableName))
+        [(tai_inf,)] = self.database.fetchall()
+        self.database.execute(
+            """select tai from reply_raw inner join %s on %s.raw_id=reply_raw.id order by raw_id desc limit 1""" % (
+            tableName, tableName))
+        [(tai_sup,)] = self.database.fetchall()
+        if tai_inf < date_num <= tai_sup:
+            return True
+        else:
+            return False
+
+
+
+    def getData(self, tableName, keyword, id_inf=0, id_sup=np.inf, convert=True):
         request = """select id, tai, %s from reply_raw inner join %s on %s.raw_id=reply_raw.id where (%s.raw_id>%i) order by id asc""" % (
             keyword, tableName, tableName, tableName,
-            id_inf) if id_sup == "Now" else  """select id, tai, %s from reply_raw inner join %s on %s.raw_id=reply_raw.id where (%s.raw_id>%i and %s.raw_id<=%i) order by id asc""" % (
+            id_inf) if id_sup == np.inf else  """select id, tai, %s from reply_raw inner join %s on %s.raw_id=reply_raw.id where (%s.raw_id>%i and %s.raw_id<=%i) order by id asc""" % (
             keyword, tableName, tableName, tableName, id_inf, tableName, id_sup)
         try:
             self.database.execute(request)
         except psycopg2.ProgrammingError:
             self.conn.rollback()
-            return id_inf, -2, -2
+            return -2
         except (psycopg2.InterfaceError, psycopg2.DatabaseError) as e:
             self.reconnectDatabase()
-            return id_inf, -5, -5
+            return -5
         all_data = self.database.fetchall()
         if all_data:
             data_id = np.array([data[0] for data in all_data], dtype=np.int64)
             data_date = np.array([data[1] for data in all_data], dtype=np.float64)
             data_values = np.array([data[2:] for data in all_data], dtype=np.float64)
             if convert:
-                data_date = data_date / 86400 - 50000
-                data_date = np.array([datetime(1995, 10, 10) + timedelta(days=a) for a in data_date])
-                return data_id[-1], date2num(data_date), data_values
+                data_date = self.convertArraytoAstro(data_date)
+                return data_id[-1], data_date, data_values
             else:
                 return data_id, data_date, data_values
 
         else:
-            return id_inf, -4, -4
+            return -4
 
     def getLastData(self, tableName, keyword):
         request = """select tai,%s from reply_raw inner join %s on %s.raw_id=reply_raw.id order by raw_id desc limit 1""" % (
@@ -134,10 +123,10 @@ class databaseManager():
             self.database.execute(request)
         except psycopg2.ProgrammingError:
             self.conn.rollback()
-            return -2, -2
+            return -2
         except (psycopg2.InterfaceError, psycopg2.DatabaseError) as e:
             self.reconnectDatabase()
-            return -5, -5
+            return -5
         data = self.database.fetchall()
         if data:
             date = (datetime(1995, 10, 10) + timedelta(days=((data[0][0] / 86400) - 50000))).strftime(
@@ -145,27 +134,33 @@ class databaseManager():
             values = np.asarray(data[0][1:])
             return date, values
         else:
-            return -4, -4
+            return -4
 
-    def getDataBetween(self, tableName, keyword, beginning=0, end="Now"):
+    def getDataBetween(self, tableName, keyword, beginning=0, end=np.inf):
 
         if beginning != 0:
             beginning = self.convertTimetoAstro(beginning)
-            beginning = self.getrowrelative2Date(tableName, "id", beginning)
-        if end != "Now":
+            beginning = self.getrowrelative2Date(tableName, "id", beginning, force=True)
+            if beginning < 0:
+                return beginning
+        if end != np.inf:
             end = self.convertTimetoAstro(end)
             end = self.getrowrelative2Date(tableName, "id", end, force=True)
+            if end < 0:
+                return end
 
-        if beginning not in [-4, -3, -2, -1] and end not in [-4, -3, -2, -1]:
-            id, data_date, data_values = self.getData(tableName, keyword, beginning, end)
+        return_values = self.getData(tableName, keyword, beginning, end)
+        if type(return_values) is not int:
+            id, data_date, data_values = return_values
             return data_date, data_values
         else:
-            return beginning, end
+            return return_values
 
-    def extract2csv(self, tableName, keyword, label, beginning=0, end="Now", path=""):
-        print tableName, keyword, beginning, end
-        dates, values = self.getDataBetween(tableName, keyword, beginning, end)
-        if type(dates) == np.ndarray:
+    def extract2csv(self, tableName, keyword, label, units, beginning=0, end=np.inf, path=""):
+        formats = ["{:.3e}" if uni.strip() in ['Torr', 'mBar', 'Bar'] else '{:.2f}' for uni in units.split(',')]
+        return_values = self.getDataBetween(tableName, keyword, beginning, end)
+        if type(return_values) is not int:
+            dates, values = return_values
             if dates.any():
                 first_row = ["Time Stamp"]
                 first_row.extend(label.split(','))
@@ -176,9 +171,7 @@ class databaseManager():
                     spamwriter.writerow(first_row)
                     for i, (date, value) in enumerate(zip(dates, values)):
                         row = [num2date(date).strftime("%d/%m/%Y %H:%M:%S")]
-
-                        format = "%.2f" if "pressure" not in tableName else "%.3e"
-                        row.extend([format % val for val in value])
+                        row.extend([fmt.format(val) for fmt, val in zip(formats, value)])
                         spamwriter.writerow(row)
 
                 return 1
@@ -188,11 +181,11 @@ class databaseManager():
             return None
 
     def getDatafromDate(self, tableName, keyword, date):
-        res = self.getrowrelative2Date(tableName, 'tai,' + keyword, self.convertTimetoAstro(date))
-        if res not in [-5, -4, -3, -2, -1]:
-            return num2date(self.convertfromAstro(res[0])).strftime("%d/%m/%Y %H:%M:%S"), res[1:]
+        return_values = self.getrowrelative2Date(tableName, 'tai,' + keyword, self.convertTimetoAstro(date))
+        if type(return_values) is not int:
+            return num2date(self.convertfromAstro(return_values[0])).strftime("%d/%m/%Y %H:%M:%S"), return_values[1:]
         else:
-            return np.nan, np.nan
+            return return_values
 
     def convertTimetoAstro(self, date):
         date_num = dt.datetime.strptime(date, "%d/%m/%Y %H:%M:%S")
@@ -214,3 +207,8 @@ class databaseManager():
                 return datenum
             except ValueError:
                 return 0
+
+    def convertArraytoAstro(self, dates):
+        dates = dates / 86400 - 50000
+        dates = np.array([datetime(1995, 10, 10) + timedelta(days=a) for a in dates])
+        return date2num(dates)
