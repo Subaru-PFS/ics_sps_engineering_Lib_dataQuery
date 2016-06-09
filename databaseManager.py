@@ -42,11 +42,18 @@ class databaseManager():
         self.database.close()
         self.conn.close()
 
-    def getrowrelative2Date(self, tableName, keyword, date_num, force=False, i=0):
+    def getrowrelative2Date(self, tableName, keyword, date_num, force=False, reverse=False, i=0):
 
         nb_sec = 3600
-        request = """select %s from reply_raw inner join %s on %s.raw_id=reply_raw.id WHERE (tai >= %f and tai < %f) order by id asc limit 1""" % (
+        if not reverse:
+            request = """select %s from reply_raw inner join %s on %s.raw_id=reply_raw.id WHERE (tai >= %f and tai < %f) order by id asc limit 1""" % (
             keyword, tableName, tableName, date_num, date_num + nb_sec)
+            date_num += nb_sec
+        else:
+            request = """select %s from reply_raw inner join %s on %s.raw_id=reply_raw.id WHERE (tai >= %f and tai < %f) order by id desc limit 1""" % (
+            keyword, tableName, tableName, date_num, date_num + nb_sec)
+            date_num -= nb_sec
+
         try:
             self.database.execute(request)
         except psycopg2.ProgrammingError:
@@ -64,11 +71,11 @@ class databaseManager():
         except ValueError:
             if force and i == 0:
                 if self.tableIsInRange(tableName, date_num):
-                    return self.getrowrelative2Date(tableName, keyword, date_num+nb_sec, True, i + 1)
+                    return self.getrowrelative2Date(tableName, keyword, date_num, force, reverse, i + 1)
                 else:
                     return -4
             elif force and i < 23:
-                return self.getrowrelative2Date(tableName, keyword, date_num+nb_sec, True, i + 1)
+                return self.getrowrelative2Date(tableName, keyword, date_num, force, reverse, i + 1)
             else:
                 return -4
 
@@ -76,18 +83,16 @@ class databaseManager():
 
         self.database.execute(
             """select tai from reply_raw inner join %s on %s.raw_id=reply_raw.id order by raw_id asc limit 1""" % (
-            tableName, tableName))
+                tableName, tableName))
         [(tai_inf,)] = self.database.fetchall()
         self.database.execute(
             """select tai from reply_raw inner join %s on %s.raw_id=reply_raw.id order by raw_id desc limit 1""" % (
-            tableName, tableName))
+                tableName, tableName))
         [(tai_sup,)] = self.database.fetchall()
         if tai_inf < date_num <= tai_sup:
             return True
         else:
             return False
-
-
 
     def getData(self, tableName, keyword, id_inf=0, id_sup=np.inf, convert=True):
         request = """select id, tai, %s from reply_raw inner join %s on %s.raw_id=reply_raw.id where (%s.raw_id>%i) order by id asc""" % (
@@ -145,7 +150,7 @@ class databaseManager():
                 return beginning
         if end != np.inf:
             end = self.convertTimetoAstro(end)
-            end = self.getrowrelative2Date(tableName, "id", end, force=True)
+            end = self.getrowrelative2Date(tableName, "id", end, force=True, reverse=True)
             if end < 0:
                 return end
 
