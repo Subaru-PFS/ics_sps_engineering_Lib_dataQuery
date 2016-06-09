@@ -51,7 +51,7 @@ class databaseManager():
             date_num += nb_sec
         else:
             request = """select %s from reply_raw inner join %s on %s.raw_id=reply_raw.id WHERE (tai >= %f and tai < %f) order by id desc limit 1""" % (
-            keyword, tableName, tableName, date_num, date_num + nb_sec)
+            keyword, tableName, tableName, date_num-nb_sec, date_num)
             date_num -= nb_sec
 
         try:
