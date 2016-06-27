@@ -47,11 +47,11 @@ class databaseManager():
         nb_sec = 3600
         if not reverse:
             request = """select %s from reply_raw inner join %s on %s.raw_id=reply_raw.id WHERE (tai >= %f and tai < %f) order by id asc limit 1""" % (
-            keyword, tableName, tableName, date_num, date_num + nb_sec)
+                keyword, tableName, tableName, date_num, date_num + nb_sec)
             date_num += nb_sec
         else:
             request = """select %s from reply_raw inner join %s on %s.raw_id=reply_raw.id WHERE (tai >= %f and tai < %f) order by id desc limit 1""" % (
-            keyword, tableName, tableName, date_num-nb_sec, date_num)
+                keyword, tableName, tableName, date_num - nb_sec, date_num)
             date_num -= nb_sec
 
         try:
@@ -132,7 +132,12 @@ class databaseManager():
         except (psycopg2.InterfaceError, psycopg2.DatabaseError) as e:
             self.reconnectDatabase()
             return -5
-        data = self.database.fetchall()
+        try:
+            data = self.database.fetchall()
+        except psycopg2.ProgrammingError:
+            self.conn.rollback()
+            return -2
+
         if data:
             date = (datetime(1995, 10, 10) + timedelta(days=((data[0][0] / 86400) - 50000))).strftime(
                 "%d/%m/%Y %H:%M:%S")
@@ -193,27 +198,13 @@ class databaseManager():
             return return_values
 
     def convertTimetoAstro(self, date):
-        date_num = dt.datetime.strptime(date, "%d/%m/%Y %H:%M:%S")
-        date_num = (date_num - dt.datetime(1970, 1, 1)).total_seconds()
-        date_num = AstroTime.fromtimestamp(date_num, tz=pytz.utc)
-        date_num = date_num.MJD() * 86400
-        return date_num
+        offset = 50000 - date2num(dt.datetime(1995, 10, 10))
+        return (date2num(dt.datetime.strptime(date, "%d/%m/%Y %H:%M:%S")) + offset) * 86400
 
     def convertfromAstro(self, date):
-        date = float(date)
-        date = AstroTime.fromMJD(date / 86400)
-        date = str(date).split("MJD")[0][:-1]
-        try:
-            datenum = date2num(dt.datetime.strptime(date, "%Y-%m-%d %H:%M:%S.%f"))
-            return datenum
-        except ValueError:
-            try:
-                datenum = date2num(dt.datetime.strptime(date, "%Y-%m-%d %H:%M:%S"))
-                return datenum
-            except ValueError:
-                return 0
+        return date / 86400 - 50000 + date2num(datetime(1995, 10, 10))
 
     def convertArraytoAstro(self, dates):
-        dates = dates / 86400 - 50000
-        dates = np.array([datetime(1995, 10, 10) + timedelta(days=a) for a in dates])
-        return date2num(dates)
+        offset = date2num(datetime(1995, 10, 10)) * np.ones(len(dates))
+        res = dates / 86400 - 50000 + offset
+        return res
