@@ -1,16 +1,16 @@
 import datetime as dt
 import csv
 
-import pytz
+
 import psycopg2
 from datetime import datetime, timedelta
 from matplotlib.dates import date2num, num2date
 import numpy as np
 
-from astrotime import AstroTime
 
 
-class databaseManager():
+
+class DatabaseManager():
     def __init__(self, ip, port):
 
         self.error_code = {-1: "network_database", -2: "bad_request", -3: "bad date format", -4: "no_data",
@@ -137,14 +137,14 @@ class databaseManager():
         except psycopg2.ProgrammingError:
             self.conn.rollback()
             return -2
-
-        if data:
-            date = (datetime(1995, 10, 10) + timedelta(days=((data[0][0] / 86400) - 50000))).strftime(
-                "%d/%m/%Y %H:%M:%S")
-            values = np.asarray(data[0][1:])
-            return date, values
-        else:
-            return -4
+        if type(data) == list:
+            if len(data) == 1:
+                if len(data[0]) > 1:
+                    date = (datetime(1995, 10, 10) + timedelta(days=((data[0][0] / 86400) - 50000))).strftime(
+                        "%d/%m/%Y %H:%M:%S")
+                    values = np.asarray(data[0][1:])
+                    return date, values
+        return -4
 
     def getDataBetween(self, tableName, keyword, beginning=0, end=np.inf):
 
