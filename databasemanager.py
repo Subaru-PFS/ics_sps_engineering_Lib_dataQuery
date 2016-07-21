@@ -1,13 +1,9 @@
-import datetime as dt
 import csv
-
-
+import datetime as dt
+import numpy as np
 import psycopg2
 from datetime import datetime, timedelta
 from matplotlib.dates import date2num, num2date
-import numpy as np
-
-
 
 
 class DatabaseManager():
@@ -109,9 +105,10 @@ class DatabaseManager():
             return -5
         all_data = self.database.fetchall()
         if all_data:
-            data_id = np.array([data[0] for data in all_data], dtype=np.int64)
-            data_date = np.array([data[1] for data in all_data], dtype=np.float64)
-            data_values = np.array([data[2:] for data in all_data], dtype=np.float64)
+            array = np.asarray(all_data)
+            data_id = np.asarray(array[:, 0], dtype=np.int64)
+            data_date = np.asarray(array[:, 1], dtype=np.float64)
+            data_values = np.asarray(array[:, 2:], dtype=np.float64)
             if convert:
                 data_date = self.convertArraytoAstro(data_date)
                 return data_id[-1], data_date, data_values
