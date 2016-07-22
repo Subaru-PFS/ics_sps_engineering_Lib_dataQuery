@@ -74,6 +74,8 @@ class DatabaseManager():
                 return self.getrowrelative2Date(tableName, keyword, date_num, force, reverse, i + 1)
             else:
                 return -4
+        except ProgrammingError:
+            return -4
 
     def tableIsInRange(self, tableName, date_num):
 
@@ -104,11 +106,15 @@ class DatabaseManager():
             self.reconnectDatabase()
             return -5
         all_data = self.database.fetchall()
-        if all_data:
-            array = np.asarray(all_data)
-            data_id = np.asarray(array[:, 0], dtype=np.int64)
-            data_date = np.asarray(array[:, 1], dtype=np.float64)
-            data_values = np.asarray(array[:, 2:], dtype=np.float64)
+        array = np.asarray(all_data)
+        if array.size:
+            try:
+                data_id = np.asarray(array[:, 0], dtype=np.int64)
+                data_date = np.asarray(array[:, 1], dtype=np.float64)
+                data_values = np.asarray(array[:, 2:], dtype=np.float64)
+            except IndexError:
+                return -4
+
             if convert:
                 data_date = self.convertArraytoAstro(data_date)
                 return data_id[-1], data_date, data_values
