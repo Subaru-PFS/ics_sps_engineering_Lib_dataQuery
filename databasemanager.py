@@ -65,32 +65,13 @@ class DatabaseManager():
             else:
                 return np.asarray(res)
         except ValueError:
-            if force and i == 0:
-                if self.tableIsInRange(tableName, date_num):
-                    return self.getrowrelative2Date(tableName, keyword, date_num, force, reverse, i + 1)
-                else:
-                    return -4
-            elif force and i < 23:
+            if force and i < 23:
                 return self.getrowrelative2Date(tableName, keyword, date_num, force, reverse, i + 1)
             else:
                 return -4
         except ProgrammingError:
             return -4
 
-    def tableIsInRange(self, tableName, date_num):
-
-        self.database.execute(
-            """select tai from reply_raw inner join %s on %s.raw_id=reply_raw.id order by raw_id asc limit 1""" % (
-                tableName, tableName))
-        [(tai_inf,)] = self.database.fetchall()
-        self.database.execute(
-            """select tai from reply_raw inner join %s on %s.raw_id=reply_raw.id order by raw_id desc limit 1""" % (
-                tableName, tableName))
-        [(tai_sup,)] = self.database.fetchall()
-        if tai_inf < date_num <= tai_sup:
-            return True
-        else:
-            return False
 
     def getData(self, tableName, keyword, id_inf=0, id_sup=np.inf, convert=True):
         request = """select id, tai, %s from reply_raw inner join %s on %s.raw_id=reply_raw.id where (%s.raw_id>%i) order by id asc""" % (
