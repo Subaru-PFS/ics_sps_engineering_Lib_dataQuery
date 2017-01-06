@@ -1,8 +1,9 @@
 import csv
 import datetime as dt
+from datetime import datetime, timedelta
+
 import numpy as np
 import psycopg2
-from datetime import datetime, timedelta
 from matplotlib.dates import date2num, num2date
 
 
@@ -69,9 +70,8 @@ class DatabaseManager():
                 return self.getrowrelative2Date(tableName, keyword, date_num, force, reverse, i + 1)
             else:
                 return -4
-        except ProgrammingError:
+        except psycopg2.ProgrammingError:
             return -4
-
 
     def getData(self, tableName, keyword, id_inf=0, id_sup=np.inf, convert=True):
         request = """select id, tai, %s from reply_raw inner join %s on %s.raw_id=reply_raw.id where (%s.raw_id>%i) order by id asc""" % (
@@ -111,6 +111,7 @@ class DatabaseManager():
         try:
             self.database.execute(request)
         except psycopg2.ProgrammingError:
+            print request
             self.conn.rollback()
             return -2
         except (psycopg2.InterfaceError, psycopg2.DatabaseError) as e:
