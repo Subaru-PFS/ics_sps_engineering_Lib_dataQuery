@@ -11,9 +11,11 @@ class DatabaseManager():
     def __init__(self, ip, port):
 
         self.error_code = {-1: "network_database", -2: "bad_request", -3: "bad date format", -4: "no_data",
-                           -5: "network disconnected"}
+                           -5: "network disconnected, attempting connection"}
         self.ip = ip
         self.port = port
+        self.database = None
+        self.conn = None
         self.reconnecting = False
 
     def initDatabase(self, dbname='archiver'):
@@ -56,7 +58,7 @@ class DatabaseManager():
         except psycopg2.ProgrammingError:
             self.conn.rollback()
             return -2
-        except (psycopg2.InterfaceError, psycopg2.DatabaseError) as e:
+        except (psycopg2.InterfaceError, psycopg2.DatabaseError, AttributeError):
             self.reconnectDatabase()
             return -5
         try:
@@ -83,7 +85,7 @@ class DatabaseManager():
         except psycopg2.ProgrammingError:
             self.conn.rollback()
             return -2
-        except (psycopg2.InterfaceError, psycopg2.DatabaseError) as e:
+        except (psycopg2.InterfaceError, psycopg2.DatabaseError, AttributeError):
             self.reconnectDatabase()
             return -5
         all_data = self.database.fetchall()
@@ -114,7 +116,7 @@ class DatabaseManager():
             print request
             self.conn.rollback()
             return -2
-        except (psycopg2.InterfaceError, psycopg2.DatabaseError) as e:
+        except (psycopg2.InterfaceError, psycopg2.DatabaseError, AttributeError):
             self.reconnectDatabase()
             return -5
         try:
@@ -193,3 +195,6 @@ class DatabaseManager():
         offset = date2num(datetime(1995, 10, 10)) * np.ones(len(dates))
         res = dates / 86400 - 50000 + offset
         return res
+
+    def getStatus(self, error_code):
+        return self.error_code[error_code]
