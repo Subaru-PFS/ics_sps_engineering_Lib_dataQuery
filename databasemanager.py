@@ -44,6 +44,17 @@ class DatabaseManager():
     def getrowrelative2Date(self, tableName, keyword, date_num, force=False, reverse=False, i=0):
 
         nb_sec = 600
+
+        if i == 0:
+            test = self.getLastData(tableName, "raw_id")
+            if type(test) == int:
+                return test
+            else:
+                last_date, last_datas = test
+                last_date = self.convertTimetoAstro(last_date)
+                if last_date < date_num:
+                    return -4
+
         if not reverse:
             request = """select %s from reply_raw inner join %s on %s.raw_id=reply_raw.id WHERE (tai >= %f and tai < %f) order by id asc limit 1""" % (
                 keyword, tableName, tableName, date_num, date_num + nb_sec)
@@ -68,7 +79,7 @@ class DatabaseManager():
             else:
                 return np.asarray(res)
         except ValueError:
-            if force and i < int(((23*3600)/nb_sec)):
+            if force and i < int(((23 * 3600) / nb_sec)):
                 return self.getrowrelative2Date(tableName, keyword, date_num, force, reverse, i + 1)
             else:
                 return -4
