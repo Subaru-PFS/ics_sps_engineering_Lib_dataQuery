@@ -118,9 +118,11 @@ class DatabaseManager():
         else:
             return -4
 
-    def getLastData(self, tableName, keyword):
-        request = """select tai,%s from reply_raw inner join %s on %s.raw_id=reply_raw.id order by raw_id desc limit 1""" % (
-            keyword, tableName, tableName)
+    def getLastData(self, tableName, keywords):
+        keyOne = keywords.split(',')[0]
+
+        request = """select tai,%s from reply_raw inner join %s on %s.raw_id=reply_raw.id where %s is not null order by raw_id desc limit 1""" % (
+            keywords, tableName, tableName, keyOne)
         try:
             self.database.execute(request)
         except psycopg2.ProgrammingError:
