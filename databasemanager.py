@@ -14,7 +14,6 @@ class DatabaseManager():
                            -5: "network disconnected, attempting connection"}
         self.ip = ip
         self.port = port
-        self.database = None
         self.conn = None
         self.reconnecting = False
 
@@ -23,7 +22,6 @@ class DatabaseManager():
         try:
             property = "dbname='%s' user='pfs' host='%s' port='%s'" % (dbname, self.ip, self.port)
             conn = psycopg2.connect(property)
-            self.database = conn.cursor()
             self.conn = conn
             return True
         except psycopg2.OperationalError:
@@ -38,13 +36,12 @@ class DatabaseManager():
             pass
 
     def closeDatabase(self):
-        self.database.close()
         self.conn.close()
 
     def getrowrelative2Date(self, tableName, keyword, date_num, force=False, reverse=False, i=0):
 
         nb_sec = 600
-
+        cursor = self.conn.cursor()
         if i == 0:
             test = self.getLastData(tableName, "raw_id")
             if type(test) == int:
@@ -65,7 +62,7 @@ class DatabaseManager():
             date_num -= nb_sec
 
         try:
-            self.database.execute(request)
+            cursor.execute(request)
         except psycopg2.ProgrammingError:
             self.conn.rollback()
             return -2
@@ -73,7 +70,7 @@ class DatabaseManager():
             self.reconnectDatabase()
             return -5
         try:
-            [res] = self.database.fetchall()
+            [res] = cursor.fetchall()
             if len(res) == 1:
                 return res[0]
             else:
@@ -87,19 +84,21 @@ class DatabaseManager():
             return -4
 
     def getData(self, tableName, keyword, id_inf=0, id_sup=np.inf, convert=True):
+        cursor = self.conn.cursor()
+        
         request = """select id, tai, %s from reply_raw inner join %s on %s.raw_id=reply_raw.id where (%s.raw_id>%i) order by id asc""" % (
             keyword, tableName, tableName, tableName,
             id_inf) if id_sup == np.inf else  """select id, tai, %s from reply_raw inner join %s on %s.raw_id=reply_raw.id where (%s.raw_id>%i and %s.raw_id<=%i) order by id asc""" % (
             keyword, tableName, tableName, tableName, id_inf, tableName, id_sup)
         try:
-            self.database.execute(request)
+            cursor.execute(request)
         except psycopg2.ProgrammingError:
             self.conn.rollback()
             return -2
         except (psycopg2.InterfaceError, psycopg2.DatabaseError, AttributeError):
             self.reconnectDatabase()
             return -5
-        all_data = self.database.fetchall()
+        all_data = cursor.fetchall()
         array = np.asarray(all_data)
         if array.size:
             try:
@@ -119,12 +118,13 @@ class DatabaseManager():
             return -4
 
     def getLastData(self, tableName, keywords):
-        keyOne = keywords.split(',')[0]
+        cursor = self.conn.cursor()
 
+        keyOne = keywords.split(',')[0]
         request = """select tai,%s from reply_raw inner join %s on %s.raw_id=reply_raw.id where %s is not null order by raw_id desc limit 1""" % (
             keywords, tableName, tableName, keyOne)
         try:
-            self.database.execute(request)
+            cursor.execute(request)
         except psycopg2.ProgrammingError:
             print request
             self.conn.rollback()
@@ -133,7 +133,7 @@ class DatabaseManager():
             self.reconnectDatabase()
             return -5
         try:
-            data = self.database.fetchall()
+            data = cursor.fetchall()
         except psycopg2.ProgrammingError:
             self.conn.rollback()
             return -2
