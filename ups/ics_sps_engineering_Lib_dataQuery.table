@@ -1,0 +1,3 @@
+
+pathPrepend(PATH, ${PRODUCT_DIR}/bin)
+pathPrepend(PYTHONPATH, ${PRODUCT_DIR}/python)
