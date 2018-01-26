@@ -1,3 +1,8 @@
+from __future__ import print_function
+from __future__ import division
+from builtins import zip
+from builtins import object
+
 import csv
 import datetime as dt
 from datetime import datetime, timedelta
@@ -7,7 +12,7 @@ import psycopg2
 from matplotlib.dates import date2num, num2date
 
 
-class DatabaseManager():
+class DatabaseManager(object):
     def __init__(self, ip, port):
 
         self.error_code = {-1: "network_database", -2: "bad_request", -3: "bad date format", -4: "no_data",
@@ -76,7 +81,7 @@ class DatabaseManager():
             else:
                 return np.asarray(res)
         except ValueError:
-            if force and i < int(((23 * 3600) / nb_sec)):
+            if force and i < int(((23 * 3600)/ nb_sec)):
                 return self.getrowrelative2Date(tableName, keyword, date_num, force, reverse, i + 1)
             else:
                 return -4
@@ -126,7 +131,7 @@ class DatabaseManager():
         try:
             cursor.execute(request)
         except psycopg2.ProgrammingError:
-            print request
+            print(request)
             self.conn.rollback()
             return -2
         except (psycopg2.InterfaceError, psycopg2.DatabaseError, AttributeError):
@@ -140,7 +145,7 @@ class DatabaseManager():
         if type(data) == list:
             if len(data) == 1:
                 if len(data[0]) > 1:
-                    date = (datetime(1995, 10, 10) + timedelta(days=((data[0][0] / 86400) - 50000))).strftime(
+                    date = (datetime(1995, 10, 10) + timedelta(days=((data[0][0]/86400) - 50000))).strftime(
                         "%d/%m/%Y %H:%M:%S")
                     values = np.asarray(data[0][1:])
                     return date, values
@@ -206,7 +211,7 @@ class DatabaseManager():
 
     def convertArraytoAstro(self, dates):
         offset = date2num(datetime(1995, 10, 10)) * np.ones(len(dates))
-        res = dates / 86400 - 50000 + offset
+        res = (dates / 86400) - 50000 + offset
         return res
 
     def getStatus(self, error_code):
