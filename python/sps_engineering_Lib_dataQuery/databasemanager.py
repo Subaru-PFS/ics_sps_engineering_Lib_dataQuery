@@ -2,12 +2,10 @@ import os
 
 import pandas as pd
 import numpy as np
-
 import psycopg2
 from matplotlib.dates import num2date
 
-import configparser
-import sps_engineering_Lib_dataQuery.config as pfsConf
+import sps_engineering_Lib_dataQuery as dataQuery
 from sps_engineering_Lib_dataQuery.dates import astro2num, str2astro
 
 
@@ -33,20 +31,11 @@ class DatabaseManager(object):
         self.dbname = dbname
 
         self.conn = False
-
-    def loadConf(self):
-        confPath = os.path.dirname(pfsConf.__file__)
-        all_file = [f for f in next(os.walk(confPath))[-1] if '.cfg' in f]
-        all_file.remove('datatype.cfg')
-
-        for f in all_file:
-            config = configparser.ConfigParser()
-            config.read_file(open('%s/%s' % (confPath, f)))
-            date = config.get('config_date', 'date')
+        self.alarmPath = '%s/alarm/' % os.path.dirname(dataQuery.__file__)
+        self.configPath = '%s/config/' % os.path.dirname(dataQuery.__file__)
 
     def init(self):
         self.nq = 0
-        self.loadConf()
         prop = "dbname='%s' user='pfs' host='%s' port='%s'" % (self.dbname, self.ip, self.port)
         conn = psycopg2.connect(prop)
         self.conn = conn
@@ -94,6 +83,48 @@ class DatabaseManager(object):
     def last(self, table, cols=False, where='', order='order by raw_id desc', limit='limit 1'):
 
         return self.pfsdata(table, cols=cols, where=where, order=order, limit=limit)
+
+    def getFirstId(self, table, datenum):
+        [[startId]] = self.sqlRequest('reply_raw', 'id', where='where tai>%.2f' % datenum, limit='limit 1')
+        [[firstId]] = self.sqlRequest(table, 'raw_id', where='where raw_id>%i' % startId, limit='limit 1')
+
+        return firstId
+
+    def getLastId(self, table, datenum):
+        [[startId]] = self.sqlRequest('reply_raw', 'id', where='where tai<.2f' % datenum, limit='limit 1')
+        [[lastId]] = self.sqlRequest(table, 'raw_id', where='where raw_id<%i' % startId, limit='limit 1')
+
+        return lastId
+
+    def allTables(self):
+        cols = 'table_name'
+        table = 'information_schema.tables'
+        where = "where table_schema='public'"
+
+        ignore = ['reply_raw', 'reply_hdr', 'actors', 'cmds', 'hub']
+
+        array = self.sqlRequest(table=table, cols=cols, where=where)
+        allTable = {}
+        for table in array:
+            actor = table[0].split('__')[0]
+            if actor in allTable.keys():
+                allTable[actor].append(table[0])
+            elif actor not in ignore:
+                allTable[actor] = [table[0]]
+
+        return allTable
+
+    def allColumns(self, tablename):
+        cols = 'column_name'
+        table = 'information_schema.columns'
+        where = "where (table_schema='public' AND table_name='%s' and data_type !='text' and column_name!='raw_id')" % tablename
+        array = self.sqlRequest(table=table, cols=cols, where=where)
+
+        allCols = [col[0] for col in array]
+        if allCols:
+            return allCols
+        else:
+            raise ValueError('No columns')
 
     def close(self):
         try:
