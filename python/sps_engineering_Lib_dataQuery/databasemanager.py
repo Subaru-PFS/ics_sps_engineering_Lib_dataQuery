@@ -6,7 +6,7 @@ import psycopg2
 from matplotlib.dates import num2date
 
 import sps_engineering_Lib_dataQuery as dataQuery
-from sps_engineering_Lib_dataQuery.dates import astro2num, str2astro
+from sps_engineering_Lib_dataQuery.dates import astro2num, str2astro, date2astro
 
 
 class PfsData(pd.DataFrame):
@@ -17,9 +17,13 @@ class PfsData(pd.DataFrame):
     def strdate(self):
         return num2date(self['tai']).isoformat()[:19]
 
+
+class OneData(PfsData):
+    def __init__(self, data, columns):
+        PfsData.__init__(self, data=data, columns=columns)
+
     def __getitem__(self, key):
         vals = pd.DataFrame.__getitem__(self, key)
-
         return vals[0] if len(vals) == 1 else vals
 
 
@@ -51,12 +55,15 @@ class DatabaseManager(object):
 
         sqlQuery = """select %s from %s %s %s %s """ % (cols, table, where, order, limit)
 
-        cursor.execute(sqlQuery)
-        self.nq += 1
+        try:
+            cursor.execute(sqlQuery)
+            self.nq += 1
+            return np.array(cursor.fetchall())
 
-        return np.array(cursor.fetchall())
+        except psycopg2.InternalError:
+            self.close()
 
-    def pfsdata(self, table, cols=False, where='', order='', limit='', convert=True):
+    def pfsdata(self, table, cols=False, where='', order='', limit='', convert=True, Obj=PfsData):
         joinTable = 'reply_raw inner join %s on %s.raw_id=reply_raw.id' % (table, table)
         allCols = 'id,tai,%s' % cols if cols else 'id,tai'
         rawData = self.sqlRequest(table=joinTable,
@@ -64,37 +71,57 @@ class DatabaseManager(object):
                                   where=where,
                                   order=order,
                                   limit=limit)
+        if not rawData.size:
+            raise ValueError('no data')
 
         if convert:
             rawData[:, 1] = astro2num(rawData[:, 1])
 
-        return PfsData(data=rawData, columns=allCols.split(','))
+        return Obj(data=rawData, columns=allCols.split(','))
 
-    def dataBetween(self, table, cols, start, end=False):
-        start = 'tai>%.2f' % str2astro(start)
-        end = 'and tai<%.2f' % str2astro(end) if end else ''
+    def dataBetween(self, table, cols, start, end=False, raw_id=False):
+        if not raw_id:
+            closestId = self.closestId(table=table, date=start)
+            start = 'tai>%.2f' % str2astro(start)
+            end = 'and tai<%.2f' % str2astro(end) if end else ''
+        else:
+            start = 'id>%i' % start
+            end = 'and id<%i' % end if end else ''
+
         where = 'where (%s %s)' % (start, end)
-
-        [[startId]] = self.sqlRequest('reply_raw', 'id', where='where %s' % start, limit='limit 1')
-        [[firstId]] = self.sqlRequest(table, 'raw_id', where='where raw_id>%i' % startId, limit='limit 1')
 
         return self.pfsdata(table, cols, where=where, order='order by id asc')
 
     def last(self, table, cols=False, where='', order='order by raw_id desc', limit='limit 1'):
 
-        return self.pfsdata(table, cols=cols, where=where, order=order, limit=limit)
+        return self.pfsdata(table, cols=cols, where=where, order=order, limit=limit, Obj=OneData)
 
-    def getFirstId(self, table, datenum):
-        [[startId]] = self.sqlRequest('reply_raw', 'id', where='where tai>%.2f' % datenum, limit='limit 1')
-        [[firstId]] = self.sqlRequest(table, 'raw_id', where='where raw_id>%i' % startId, limit='limit 1')
+    def limitIdfromDate(self, date):
 
-        return firstId
+        datenum = date2astro(date)
+        [[maxid, maxtai]] = self.sqlRequest('reply_raw', 'id,tai', order='order by tai desc', limit='limit 1')
 
-    def getLastId(self, table, datenum):
-        [[startId]] = self.sqlRequest('reply_raw', 'id', where='where tai<.2f' % datenum, limit='limit 1')
-        [[lastId]] = self.sqlRequest(table, 'raw_id', where='where raw_id<%i' % startId, limit='limit 1')
+        [[limId1]] = self.sqlRequest('reply_raw', 'id',
+                                     where='where tai>%.2f and tai<%.2f' % (datenum, datenum + 86400), limit='limit 1')
+        if (datenum + 86400) < maxtai:
+            [[limId2]] = self.sqlRequest('reply_raw', 'id',
+                                         where='where tai>%.2f and tai<%.2f' % (datenum + 86400, datenum + 2 * 86400),
+                                         limit='limit 1')
+        else:
+            limId2 = maxid
 
-        return lastId
+        return limId1, limId2
+
+    def closestId(self, table, limitId=False, date=False):
+        if not limitId:
+            limId1, limId2 = self.limitIdfromDate(date=date)
+        else:
+            limId1, limId2 = limitId
+
+        [[closestId]] = self.sqlRequest(table, 'raw_id', where='where raw_id>%i and raw_id<%i' % (limId1, limId2),
+                                        limit='limit 1')
+
+        return closestId
 
     def allTables(self):
         cols = 'table_name'
