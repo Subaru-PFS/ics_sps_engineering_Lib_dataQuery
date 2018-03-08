@@ -40,7 +40,7 @@ def date2astro(date):
     return num2astro(date2num(datetime))
 
 
-def all2num(date):
+def all2num(date, redo=True):
 
     if isinstance(date, float):
         return date
@@ -51,8 +51,10 @@ def all2num(date):
         return date2num(datetime)
     elif isinstance(date, dt.datetime):
         return date2num(date)
-    elif isinstance(date, unicode):
-        return all2num(str(date))
     else:
-        raise ValueError
+        if redo:
+            return all2num(str(date), redo=False)
+        else:
+            raise ValueError
+
 
