@@ -35,8 +35,8 @@ class DatabaseManager(object):
         self.dbname = dbname
 
         self.conn = False
-        self.alarmPath = '%s/alarm/' % os.path.dirname(dataQuery.__file__)
-        self.configPath = '%s/config/' % os.path.dirname(dataQuery.__file__)
+        self.alarmPath = '%s/alarm/' % os.path.abspath(os.path.join(os.path.dirname(dataQuery.__file__), '../..'))
+        self.configPath = '%s/config/' % os.path.abspath(os.path.join(os.path.dirname(dataQuery.__file__), '../..'))
 
     def init(self):
         self.nq = 0

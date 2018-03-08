@@ -11,12 +11,11 @@ try:
 except ImportError:
     import ConfigParser as configparser
 
-import sps_engineering_Lib_dataQuery.config as aitConf
-import sps_engineering_Lib_dataQuery.alarm as aitAlarm
+import sps_engineering_Lib_dataQuery as dataQuery
 from sps_engineering_Lib_dataQuery.dates import all2num
 
-confpath = os.path.dirname(aitConf.__file__)
-alarmpath = os.path.dirname(aitAlarm.__file__)
+confpath = '%s/config/' % os.path.abspath(os.path.join(os.path.dirname(dataQuery.__file__), '../..'))
+alarmpath = '%s/alarm/' % os.path.abspath(os.path.join(os.path.dirname(dataQuery.__file__), '../..'))
 
 
 class ConfigParser(configparser.ConfigParser):
@@ -138,7 +137,7 @@ def loadConf(date=0):
         ranges = ','.join([datatype[typ.strip()]['range'] for typ in types.split(',')])
         labels = config.get(tablename, 'label') if 'label' in config.options(tablename) else None
         deviceLabel = config.get(tablename, 'label_device') if 'label_device' in config.options(tablename) else None
-        botcmd = config.get(tablename, 'bot_cmd') if 'bot_cmd' in config.options(tablename)  else None
+        botcmd = config.get(tablename, 'bot_cmd') if 'bot_cmd' in config.options(tablename) else None
 
         allConfig.append(DevConf(tablename=tablename,
                                  keys=keys,
