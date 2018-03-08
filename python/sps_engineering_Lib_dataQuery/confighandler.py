@@ -14,8 +14,8 @@ except ImportError:
 import sps_engineering_Lib_dataQuery as dataQuery
 from sps_engineering_Lib_dataQuery.dates import all2num
 
-confpath = '%s/config/' % os.path.abspath(os.path.join(os.path.dirname(dataQuery.__file__), '../..'))
-alarmpath = '%s/alarm/' % os.path.abspath(os.path.join(os.path.dirname(dataQuery.__file__), '../..'))
+confpath = os.path.abspath(os.path.join(os.path.dirname(dataQuery.__file__), '../..', 'config'))
+alarmpath = os.path.abspath(os.path.join(os.path.dirname(dataQuery.__file__), '../..', 'alarm'))
 
 
 class ConfigParser(configparser.ConfigParser):
