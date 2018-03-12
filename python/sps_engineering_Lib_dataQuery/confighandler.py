@@ -25,6 +25,26 @@ class ConfigParser(configparser.ConfigParser):
             self.read_file = self.readfp
 
 
+class DummyConf(dict):
+    def __init__(self):
+        dict.__init__(self)
+
+    def add(self, table, keys):
+        self[table] = {'key': ','.join(keys),
+                       'type': ','.join(['none' for key in keys]),
+                       'lower_bound': ','.join(['-inf' for key in keys]),
+                       'upper_bound': ','.join(['inf' for key in keys])}
+
+    def get(self, table, attr):
+        return self[table][attr]
+
+    def sections(self):
+        return self.keys()
+
+    def options(self, table):
+        return ['key', 'type', 'lower_bound', 'upper_bound']
+
+
 class Alarm(object):
     def __init__(self, mode, label, tablename, key, lbound, ubound):
         self.mode = mode
@@ -119,12 +139,16 @@ def getConfigParser(date=0.):
 
 
 def loadConf(date=0):
+    config = getConfigParser(date=date)
+    return buildPfsConf(config)
+
+
+def buildPfsConf(config):
     datatype = ConfigParser()
     datatype.read('%s/datatype.cfg' % confpath)
     datatype = datatype._sections
     allConfig = []
 
-    config = getConfigParser(date=date)
     tablenames = [table for table in config.sections() if table != 'config_date']
 
     for tablename in tablenames:

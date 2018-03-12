@@ -7,7 +7,7 @@ from matplotlib.dates import num2date
 
 import sps_engineering_Lib_dataQuery as dataQuery
 from sps_engineering_Lib_dataQuery.dates import astro2num, str2astro, date2astro
-
+from sps_engineering_Lib_dataQuery.confighandler import DummyConf, buildPfsConf
 
 class PfsData(pd.DataFrame):
     def __init__(self, data, columns):
@@ -77,7 +77,10 @@ class DatabaseManager(object):
         if convert:
             rawData[:, 1] = astro2num(rawData[:, 1])
 
-        return Obj(data=rawData, columns=allCols.split(','))
+        df = Obj(data=rawData, columns=allCols.split(','))
+        df = df.dropna()
+
+        return df.infer_objects()
 
     def dataBetween(self, table, cols, start, end=False, raw_id=False):
         if not raw_id:
@@ -129,15 +132,9 @@ class DatabaseManager(object):
         where = "where table_schema='public'"
 
         ignore = ['reply_raw', 'reply_hdr', 'actors', 'cmds', 'hub']
-
         array = self.sqlRequest(table=table, cols=cols, where=where)
-        allTable = {}
-        for table in array:
-            actor = table[0].split('__')[0]
-            if actor in allTable.keys():
-                allTable[actor].append(table[0])
-            elif actor not in ignore:
-                allTable[actor] = [table[0]]
+
+        allTable = [table[0] for table in array if table[0].split('__')[0] not in ignore]
 
         return allTable
 
@@ -152,6 +149,20 @@ class DatabaseManager(object):
             return allCols
         else:
             raise ValueError('No columns')
+
+    def pollDbConf(self, date):
+        allTables = self.allTables()
+        fTables = DummyConf()
+        for table in allTables:
+            try:
+                closestId = self.closestId(table=table, date=date)
+                cols = self.allColumns(table)
+                fTables.add(table, cols)
+
+            except ValueError:
+                pass
+
+        return buildPfsConf(fTables)
 
     def close(self):
         try:
