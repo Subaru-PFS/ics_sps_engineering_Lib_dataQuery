@@ -9,6 +9,7 @@ import sps_engineering_Lib_dataQuery as dataQuery
 from sps_engineering_Lib_dataQuery.dates import astro2num, str2astro, date2astro
 from sps_engineering_Lib_dataQuery.confighandler import DummyConf, buildPfsConf
 
+
 class PfsData(pd.DataFrame):
     def __init__(self, data, columns):
         pd.DataFrame.__init__(self, data=data, columns=columns)
@@ -77,10 +78,10 @@ class DatabaseManager(object):
         if convert:
             rawData[:, 1] = astro2num(rawData[:, 1])
 
-        df = Obj(data=rawData, columns=allCols.split(','))
-        df = df.dropna()
+        df = pd.DataFrame(data=rawData, columns=allCols.split(','))
+        df.dropna(inplace=True)
 
-        return df.infer_objects()
+        return Obj(data=df.as_matrix(), columns=df.columns)
 
     def dataBetween(self, table, cols, start, end=False, raw_id=False):
         if not raw_id:
