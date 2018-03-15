@@ -1,13 +1,12 @@
 import os
-
-import pandas as pd
 import numpy as np
+import pandas as pd
 import psycopg2
-from matplotlib.dates import num2date
-
 import sps_engineering_Lib_dataQuery as dataQuery
-from sps_engineering_Lib_dataQuery.dates import astro2num, str2astro, date2astro
+
+from matplotlib.dates import num2date
 from sps_engineering_Lib_dataQuery.confighandler import DummyConf, buildPfsConf
+from sps_engineering_Lib_dataQuery.dates import astro2num, str2astro, date2astro
 
 
 class PfsData(pd.DataFrame):
@@ -81,7 +80,11 @@ class DatabaseManager(object):
         df = pd.DataFrame(data=rawData, columns=allCols.split(','))
         df.dropna(inplace=True)
 
-        return Obj(data=df.as_matrix(), columns=df.columns)
+        data = df.as_matrix()
+        if not data.size:
+            raise ValueError('no data')
+
+        return Obj(data=data, columns=df.columns)
 
     def dataBetween(self, table, cols, start, end=False, raw_id=False):
         if not raw_id:

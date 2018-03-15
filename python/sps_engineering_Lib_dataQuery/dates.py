@@ -5,15 +5,14 @@ from matplotlib.dates import date2num, num2date
 
 
 def str2date(datestr):
-
-    if len (datestr)==10:
-        fmt="%Y-%m-%d"
-    elif len (datestr)==16:
-        fmt="%Y-%m-%d"+datestr[10]+"%H:%M"
-    elif len (datestr)==19:
-        fmt="%Y-%m-%d"+datestr[10]+"%H:%M:%S"
+    if len(datestr) == 10:
+        fmt = "%Y-%m-%d"
+    elif len(datestr) == 16:
+        fmt = "%Y-%m-%d" + datestr[10] + "%H:%M"
+    elif len(datestr) == 19:
+        fmt = "%Y-%m-%d" + datestr[10] + "%H:%M:%S"
     else:
-        fmt="%Y-%m-%d"+datestr[10]+"%H:%M:%S.%f"
+        fmt = "%Y-%m-%d" + datestr[10] + "%H:%M:%S.%f"
 
     return dt.datetime.strptime(datestr, fmt)
 
@@ -41,7 +40,6 @@ def date2astro(date):
 
 
 def all2num(date, redo=True):
-
     if isinstance(date, float):
         return date
     if isinstance(date, int):
@@ -56,5 +54,3 @@ def all2num(date, redo=True):
             return all2num(str(date), redo=False)
         else:
             raise ValueError
-
-
