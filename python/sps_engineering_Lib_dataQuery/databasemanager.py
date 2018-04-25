@@ -80,7 +80,7 @@ class DatabaseManager(object):
         df = pd.DataFrame(data=rawData, columns=allCols.split(','))
         df.dropna(inplace=True)
 
-        data = df.as_matrix()
+        data = df.as_matrix().astype('float64')
         if not data.size:
             raise ValueError('no data')
 
