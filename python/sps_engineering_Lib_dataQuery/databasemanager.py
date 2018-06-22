@@ -2,10 +2,12 @@ import os
 import numpy as np
 import pandas as pd
 import psycopg2
+from datetime import datetime as dt
+
 import sps_engineering_Lib_dataQuery as dataQuery
 
-from matplotlib.dates import num2date
-from sps_engineering_Lib_dataQuery.confighandler import DummyConf, buildPfsConf
+from matplotlib.dates import num2date, date2num
+from sps_engineering_Lib_dataQuery.confighandler import DummyConf, buildPfsConf, loadAlarms
 from sps_engineering_Lib_dataQuery.dates import astro2num, str2astro, date2astro
 
 
@@ -167,6 +169,37 @@ class DatabaseManager(object):
                 pass
 
         return buildPfsConf(fTables)
+
+    def loadMode(self):
+        cols = 'id,tai,b1,r1,n1,b2,r2,n2,b3,r3,n3,b4,r4,n4,enu_sm1,enu_sm2,enu_sm3,enu_sm4,cleanroom,watercooling'
+        modes = self.sqlRequest(table='mode', cols=cols, order='order by id desc', limit='limit 1')[0]
+
+        return dict([(col, mode) for col, mode in zip(cols.split(','), modes)])
+
+    def writeMode(self, device, mode):
+        modes = self.loadMode()
+        modes[device] = mode
+        tai = date2num(dt.utcnow())
+        id = int(modes['id']) + 1
+
+        sqlRequest = """INSERT INTO mode VALUES (%i,%.4f,'%s','%s','%s','%s','%s','%s','%s','%s','%s','%s','%s','%s','%s','%s','%s','%s','%s','%s');""" % (
+        id, tai, modes['b1'], modes['r1'], modes['n1'], modes['b2'], modes['r2'], modes['n2'], modes['b3'], modes['r3'],
+        modes['n3'], modes['b4'], modes['r4'], modes['n4'], modes['enu_sm1'], modes['enu_sm2'], modes['enu_sm3'],
+        modes['enu_sm4'], modes['cleanroom'], modes['watercooling'])
+        conn = self.conn if self.conn else self.init()
+
+        cursor = conn.cursor()
+        cursor.execute(sqlRequest)
+        conn.commit()
+
+    def loadAlarms(self):
+        modes = self.loadMode()
+        modes.pop('id', None)
+        modes.pop('tai', None)
+
+        return loadAlarms(modes)
+
+
 
     def close(self):
         try:

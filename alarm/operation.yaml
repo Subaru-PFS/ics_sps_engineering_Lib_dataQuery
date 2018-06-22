@@ -1,0 +1,116 @@
+default: &VISCU_DEFAULT
+  pressure:
+    tablename: xcu_$cam__ionpump1
+    key: pressure
+    lower_bound: 1e-10
+    upper_bound: 1e-6
+  turbo:
+    tablename: xcu_$cam__turboSpeed
+    key: val1
+    lower_bound: 0
+    upper_bound: 1000
+  gatevalve:
+     tablename: xcu_$cam__gatevalve
+     key: position
+     lower_bound: 1
+     upper_bound: 2
+  power:
+     tablename: xcu_$cam__coolertemps
+     key: power
+     lower_bound: 70
+     upper_bound: 245
+
+default: &NIR_DEFAULT
+  pressure:
+    tablename: xcu_$cam__ionpump1
+    key: pressure
+    lower_bound: 1e-10
+    upper_bound: 1e-6
+  turbo:
+    tablename: xcu_$cam__turboSpeed
+    key: val1
+    lower_bound: 0
+    upper_bound: 1000
+  gatevalve:
+     tablename: xcu_$cam__gatevalve
+     key: position
+     lower_bound: 1
+     upper_bound: 2
+  power:
+     tablename: xcu_$cam__coolertemps
+     key: power
+     lower_bound: 70
+     upper_bound: 245
+
+default: &ENU_DEFAULT
+  temp:
+    tablename: $enuId__temps
+    key: val3_1
+    lower_bound: 18
+    upper_bound: 21
+  
+default: &CR_DEFAULT
+  temp:
+    tablename: aitroom__weatherduino
+    key: temp
+    lower_bound: 1e-10
+    upper_bound: 1e-6
+  humidity:
+    tablename: aitroom__weatherduino
+    key: humidity
+    lower_bound: 0
+    upper_bound: 1000
+
+default: &WP_DEFAULT
+  temp:
+     tablename: aitroom__chiller
+     key: temp
+     lower_bound: 14
+     upper_bound: 16
+
+
+b1:
+  <<: *VISCU_DEFAULT
+b2:
+  <<: *VISCU_DEFAULT
+b3:
+  <<: *VISCU_DEFAULT
+b4:
+  <<: *VISCU_DEFAULT
+
+r1:
+  <<: *VISCU_DEFAULT
+r2:
+  <<: *VISCU_DEFAULT
+r3:
+  <<: *VISCU_DEFAULT
+r4:
+  <<: *VISCU_DEFAULT
+
+n1:
+  <<: *NIR_DEFAULT
+n2:
+  <<: *NIR_DEFAULT
+n3:
+  <<: *NIR_DEFAULT
+n4:
+  <<: *NIR_DEFAULT
+
+cleanroom:
+  <<: *CR_DEFAULT
+
+chiller:
+  <<: *WP_DEFAULT
+
+enu_sm1:
+ <<: *ENU_DEFAULT
+
+enu_sm2:
+ <<: *ENU_DEFAULT
+
+enu_sm3:
+ <<: *ENU_DEFAULT
+
+enu_sm4:
+ <<: *ENU_DEFAULT
+

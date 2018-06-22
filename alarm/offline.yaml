@@ -1,0 +1,57 @@
+default: &VISCU_DEFAULT
+
+default: &NIR_DEFAULT
+
+default: &ENU_DEFAULT
+
+default: &CR_DEFAULT
+
+default: &WP_DEFAULT
+
+
+
+b1:
+  <<: *VISCU_DEFAULT
+b2:
+  <<: *VISCU_DEFAULT
+b3:
+  <<: *VISCU_DEFAULT
+b4:
+  <<: *VISCU_DEFAULT
+
+r1:
+  <<: *VISCU_DEFAULT
+r2:
+  <<: *VISCU_DEFAULT
+r3:
+  <<: *VISCU_DEFAULT
+r4:
+  <<: *VISCU_DEFAULT
+
+n1:
+  <<: *NIR_DEFAULT
+n2:
+  <<: *NIR_DEFAULT
+n3:
+  <<: *NIR_DEFAULT
+n4:
+  <<: *NIR_DEFAULT
+
+cleanroom:
+  <<: *CR_DEFAULT
+
+chiller:
+  <<: *WP_DEFAULT
+
+enu_sm1:
+ <<: *ENU_DEFAULT
+
+enu_sm2:
+ <<: *ENU_DEFAULT
+
+enu_sm3:
+ <<: *ENU_DEFAULT
+
+enu_sm4:
+ <<: *ENU_DEFAULT
+

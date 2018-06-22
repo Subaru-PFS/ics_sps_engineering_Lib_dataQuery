@@ -1,0 +1,64 @@
+default: &VISCU_DEFAULT
+  pressure:
+    tablename: xcu_$cam__pressure
+    key: val1
+    lower_bound: 1e-10
+    upper_bound: 1
+  turbo:
+    tablename: xcu_$cam__turboSpeed
+    key: val1
+    lower_bound: 89000
+    upper_bound: 91000
+  gatevalve:
+     tablename: xcu_$cam__gatevalve
+     key: position
+     lower_bound: 0
+     upper_bound: 1
+
+default: &NIR_DEFAULT
+  pressure:
+    tablename: xcu_$cam__pressure
+    key: val1
+    lower_bound: 1e-10
+    upper_bound: 1
+  turbo:
+    tablename: xcu_$cam__turboSpeed
+    key: val1
+    lower_bound: 89000
+    upper_bound: 91000
+  gatevalve:
+     tablename: xcu_$cam__gatevalve
+     key: position
+     lower_bound: 0
+     upper_bound: 1
+
+
+
+b1:
+  <<: *VISCU_DEFAULT
+b2:
+  <<: *VISCU_DEFAULT
+b3:
+  <<: *VISCU_DEFAULT
+b4:
+  <<: *VISCU_DEFAULT
+
+r1:
+  <<: *VISCU_DEFAULT
+r2:
+  <<: *VISCU_DEFAULT
+r3:
+  <<: *VISCU_DEFAULT
+r4:
+  <<: *VISCU_DEFAULT
+
+n1:
+  <<: *NIR_DEFAULT
+n2:
+  <<: *NIR_DEFAULT
+n3:
+  <<: *NIR_DEFAULT
+n4:
+  <<: *NIR_DEFAULT
+
+

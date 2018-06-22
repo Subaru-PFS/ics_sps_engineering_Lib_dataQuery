@@ -3,7 +3,7 @@ import os
 import pickle
 import random
 import time
-
+import yaml
 import numpy as np
 
 try:
@@ -44,16 +44,51 @@ class DummyConf(dict):
     def options(self, table):
         return ['key', 'type', 'lower_bound', 'upper_bound']
 
-
 class Alarm(object):
-    def __init__(self, mode, label, tablename, key, lbound, ubound):
-        self.mode = mode
+    def __init__(self, label, tablename, key, lbound, ubound):
         self.label = label
         self.tablename = tablename
         self.key = key
         self.lbound = lbound
         self.ubound = ubound
+        self.state = True
 
+class Device(object):
+    def __init__(self, name, mode, conf):
+        self.name = name
+        self.mode = mode
+        self.alarms = self.getAlarms(conf)
+
+    def getAlarms(self, conf):
+        alarms = []
+        conf = dict() if not conf else conf
+
+        for label, alarmDict in conf.items():
+            tablename = alarmDict['tablename']
+            tablename = tablename.replace('$cam', self.name)
+            tablename = tablename.replace('$enuId', self.name)
+            alarms.append(Alarm(label=label,
+                                tablename=tablename,
+                                key=alarmDict['key'],
+                                lbound=alarmDict['lower_bound'],
+                                ubound=alarmDict['upper_bound']))
+
+        return alarms
+
+def loadAlarms(modes):
+    allAlarms = dict()
+    for device, mode in modes.items():
+
+        with open("%s/%s.yaml" % (alarmpath, mode), 'r') as stream:
+            try:
+                conf = yaml.load(stream)
+            except:
+                conf = dict()
+                conf[device] = False
+
+        allAlarms[device] = Device(name=device, mode=mode, conf=conf[device])
+
+    return allAlarms
 
 class CurveConf(object):
     def __init__(self, deviceConf, ind):
@@ -178,24 +213,6 @@ def buildPfsConf(config):
     return allConfig
 
 
-def loadAlarm():
-    listAlarm = []
-    modes = readMode()
-
-    for actor, mode in list(modes.items()):
-        config = ConfigParser()
-        config.read_file(open('%s/%s.cfg' % (alarmpath, mode)))
-        sections = [a for a in config.sections() if actor in config.get(a, 'tablename')]
-
-        for label in sections:
-            listAlarm.append(Alarm(mode=mode,
-                                   label=label,
-                                   tablename=config.get(label, 'tablename'),
-                                   key=config.get(label, 'key'),
-                                   lbound=config.get(label, 'lower_bound'),
-                                   ubound=config.get(label, 'upper_bound')))
-
-    return listAlarm
 
 
 def readMode():
