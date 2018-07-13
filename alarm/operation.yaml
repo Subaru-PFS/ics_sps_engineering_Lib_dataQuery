@@ -99,7 +99,7 @@ n4:
 cleanroom:
   <<: *CR_DEFAULT
 
-chiller:
+watercooling:
   <<: *WP_DEFAULT
 
 enu_sm1:
