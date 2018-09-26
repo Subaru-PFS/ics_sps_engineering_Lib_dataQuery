@@ -1,9 +1,9 @@
 import os
+
 import numpy as np
 import pandas as pd
 import psycopg2
 import sps_engineering_Lib_dataQuery as dataQuery
-
 from matplotlib.dates import num2date
 from sps_engineering_Lib_dataQuery.confighandler import DummyConf, buildPfsConf
 from sps_engineering_Lib_dataQuery.dates import astro2num, str2astro, date2astro
@@ -72,7 +72,7 @@ class DatabaseManager(object):
                                   order=order,
                                   limit=limit)
         if not rawData.size:
-            raise ValueError('no data')
+            raise ValueError('no raw data : select %s from %s %s %s %s ' % (allCols, joinTable, where, order, limit))
 
         if convert:
             rawData[:, 1] = astro2num(rawData[:, 1])
@@ -82,7 +82,7 @@ class DatabaseManager(object):
 
         data = df.as_matrix().astype('float64')
         if not data.size:
-            raise ValueError('no data')
+            raise ValueError('no valid data : select %s from %s %s %s %s ' % (allCols, joinTable, where, order, limit))
 
         return Obj(data=data, columns=df.columns)
 
