@@ -10,8 +10,8 @@ from sps_engineering_Lib_dataQuery.dates import astro2num, str2astro, date2astro
 
 
 class PfsData(pd.DataFrame):
-    def __init__(self, data, columns):
-        pd.DataFrame.__init__(self, data=data, columns=columns)
+    def __init__(self, data):
+        pd.DataFrame.__init__(self, data=data)
 
     @property
     def strdate(self):
@@ -19,8 +19,8 @@ class PfsData(pd.DataFrame):
 
 
 class OneData(PfsData):
-    def __init__(self, data, columns):
-        PfsData.__init__(self, data=data, columns=columns)
+    def __init__(self, data):
+        PfsData.__init__(self, data=data)
 
     def __getitem__(self, key):
         vals = pd.DataFrame.__getitem__(self, key)
@@ -63,28 +63,25 @@ class DatabaseManager(object):
         except psycopg2.InternalError:
             self.close()
 
-    def pfsdata(self, table, cols=False, where='', order='', limit='', convert=True, Obj=PfsData):
+    def pfsdata(self, table, cols='', where='', order='', limit='', convert=True, Obj=PfsData):
         joinTable = 'reply_raw inner join %s on %s.raw_id=reply_raw.id' % (table, table)
-        allCols = 'id,tai,%s' % cols if cols else 'id,tai'
+        typedCols = [('id', '<i8'), ('tai', '<f8')] + [(col, '<f8') for col in cols.split(',') if col]
+        cols = ','.join([name for name, type in typedCols])
+
         rawData = self.sqlRequest(table=joinTable,
-                                  cols=allCols,
+                                  cols=cols,
                                   where=where,
                                   order=order,
                                   limit=limit)
         if not rawData.size:
-            raise ValueError('no raw data : select %s from %s %s %s %s ' % (allCols, joinTable, where, order, limit))
+            raise ValueError('no raw data : select %s from %s %s %s %s ' % (cols, joinTable, where, order, limit))
 
         if convert:
             rawData[:, 1] = astro2num(rawData[:, 1])
 
-        df = pd.DataFrame(data=rawData, columns=allCols.split(','))
-        df.dropna(inplace=True)
+        data = np.array([tuple(row) for row in list(rawData)], dtype=typedCols)
 
-        data = df.as_matrix().astype('float64')
-        if not data.size:
-            raise ValueError('no valid data : select %s from %s %s %s %s ' % (allCols, joinTable, where, order, limit))
-
-        return Obj(data=data, columns=df.columns)
+        return Obj(data=data)
 
     def dataBetween(self, table, cols, start, end=False, raw_id=False):
         if not raw_id:
@@ -99,7 +96,7 @@ class DatabaseManager(object):
 
         return self.pfsdata(table, cols, where=where, order='order by id asc')
 
-    def last(self, table, cols=False, where='', order='order by raw_id desc', limit='limit 1'):
+    def last(self, table, cols='', where='', order='order by raw_id desc', limit='limit 1'):
 
         return self.pfsdata(table, cols=cols, where=where, order=order, limit=limit, Obj=OneData)
 
