@@ -65,7 +65,7 @@ class DatabaseManager(object):
 
     def pfsdata(self, table, cols='', where='', order='', limit='', convert=True, Obj=PfsData):
         joinTable = 'reply_raw inner join %s on %s.raw_id=reply_raw.id' % (table, table)
-        typedCols = [('id', '<i8'), ('tai', '<f8')] + [(col, '<f8') for col in cols.split(',') if col]
+        typedCols = [('id', '<i8'), ('tai', '<f8')] + [(str(col), '<f8') for col in cols.split(',') if col]
         cols = ','.join([name for name, type in typedCols])
 
         rawData = self.sqlRequest(table=joinTable,
