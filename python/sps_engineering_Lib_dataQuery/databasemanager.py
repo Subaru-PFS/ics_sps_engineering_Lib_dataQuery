@@ -98,8 +98,8 @@ class DatabaseManager(object):
 
         return self.pfsdata(table, cols, where=where, order='order by id asc')
 
-    def last(self, table, cols='', where='', order='order by raw_id desc', limit='limit 1'):
-
+    def last(self, table, cols='', where='', order='', limit=''):
+        where = 'where id=(select max(raw_id) from %s )'%table
         return self.pfsdata(table, cols=cols, where=where, order=order, limit=limit, Obj=OneData)
 
     def limitIdfromDate(self, date):
