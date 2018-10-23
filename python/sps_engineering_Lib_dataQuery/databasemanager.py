@@ -1,4 +1,5 @@
 import os
+import time
 
 import numpy as np
 import pandas as pd
@@ -98,9 +99,13 @@ class DatabaseManager(object):
 
         return self.pfsdata(table, cols, where=where, order='order by id asc')
 
-    def last(self, table, cols='', where='', order='', limit=''):
-        where = 'where id=(select max(raw_id) from %s )'%table
-        return self.pfsdata(table, cols=cols, where=where, order=order, limit=limit, Obj=OneData)
+    def last(self, table, cols=''):
+        [[lastId]] = self.sqlRequest(cols='max(raw_id)', table=table)
+        try:
+            return self.pfsdata(table, cols=cols, where='where id=%d' % lastId, Obj=OneData)
+        except ValueError:
+            time.sleep(0.02)
+            return self.last(table=table, cols=cols)
 
     def limitIdfromDate(self, date):
 
