@@ -11,11 +11,10 @@ try:
 except ImportError:
     import ConfigParser as configparser
 
-import sps_engineering_Lib_dataQuery as dataQuery
 from sps_engineering_Lib_dataQuery.dates import all2num
 
-confpath = os.path.abspath(os.path.join(os.path.dirname(dataQuery.__file__), '../..', 'config'))
-alarmpath = os.path.abspath(os.path.join(os.path.dirname(dataQuery.__file__), '../..', 'alarm'))
+confpath = os.path.join('/software/ait/', 'config')
+alarmpath = os.path.join('/software/ait/', 'alarm')
 
 
 class ConfigParser(configparser.ConfigParser):
