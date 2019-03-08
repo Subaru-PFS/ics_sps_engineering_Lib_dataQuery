@@ -1,5 +1,6 @@
 import os
 import time
+
 import numpy as np
 import pandas as pd
 import psycopg2
@@ -160,7 +161,12 @@ class DatabaseManager(object):
     def pollDbConf(self, date):
         allTables = self.allTables()
         fTables = DummyConf()
-        limitIds = self.limitIdfromDate(date=date)
+
+        try:
+            limitIds = self.limitIdfromDate(date=date)
+        except ValueError:
+            allTables = []
+
         for table in allTables:
             try:
                 closestId = self.closestId(table=table, limitIds=limitIds)
