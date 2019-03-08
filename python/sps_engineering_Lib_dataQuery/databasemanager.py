@@ -1,6 +1,5 @@
 import os
 import time
-
 import numpy as np
 import pandas as pd
 import psycopg2
@@ -107,31 +106,31 @@ class DatabaseManager(object):
             time.sleep(0.02)
             return self.last(table=table, cols=cols)
 
-    def limitIdfromDate(self, date):
+    def limitIdfromDate(self, date, reverse=False):
 
         datenum = date2astro(date)
-        [[maxid, maxtai]] = self.sqlRequest('reply_raw', 'id,tai', order='order by tai desc', limit='limit 1')
+        mintai, maxtai = (datenum, datenum + 86400) if not reverse else (datenum - 86400, datenum)
 
-        [[limId1]] = self.sqlRequest('reply_raw', 'id',
-                                     where='where tai>%.2f and tai<%.2f' % (datenum, datenum + 86400), limit='limit 1')
-        if (datenum + 86400) < maxtai:
-            [[limId2]] = self.sqlRequest('reply_raw', 'id',
-                                         where='where tai>%.2f and tai<%.2f' % (datenum + 86400, datenum + 2 * 86400),
-                                         limit='limit 1')
+        [[minid]] = self.sqlRequest('reply_raw', 'id',
+                                    where='where tai>%.2f and tai<%.2f' % (mintai, maxtai),
+                                    limit='limit 1')
+
+        [[maxid]] = self.sqlRequest('reply_raw', 'id',
+                                    where='where tai>%.2f and tai<%.2f' % (mintai, maxtai),
+                                    order='order by tai desc',
+                                    limit='limit 1')
+        return minid, maxid
+
+    def closestId(self, table, limitIds=None, date=False, reverse=False):
+        if not date:
+            minid, maxid = limitIds
         else:
-            limId2 = maxid
+            minid, maxid = self.limitIdfromDate(date=date, reverse=reverse)
 
-        return limId1, limId2
-
-    def closestId(self, table, limitId=False, date=False):
-        if not limitId:
-            limId1, limId2 = self.limitIdfromDate(date=date)
-        else:
-            limId1, limId2 = limitId
-
-        [[closestId]] = self.sqlRequest(table, 'raw_id', where='where raw_id>%i and raw_id<%i' % (limId1, limId2),
+        order = 'order by raw_id asc' if not reverse else 'order by raw_id desc'
+        [[closestId]] = self.sqlRequest(table, 'raw_id', where='where raw_id>%i and raw_id<%i' % (minid, maxid),
+                                        order=order,
                                         limit='limit 1')
-
         return closestId
 
     def allTables(self):
@@ -161,9 +160,10 @@ class DatabaseManager(object):
     def pollDbConf(self, date):
         allTables = self.allTables()
         fTables = DummyConf()
+        limitIds = self.limitIdfromDate(date=date)
         for table in allTables:
             try:
-                closestId = self.closestId(table=table, date=date)
+                closestId = self.closestId(table=table, limitIds=limitIds)
                 cols = self.allColumns(table)
                 fTables.add(table, cols)
 
