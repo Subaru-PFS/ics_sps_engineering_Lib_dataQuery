@@ -29,9 +29,9 @@ class OneData(PfsData):
 
 
 class DatabaseManager(object):
-    def __init__(self, ip, port, password, dbname='archiver'):
+    def __init__(self, host, port, password, dbname='archiver'):
 
-        self.ip = ip
+        self.host = host
         self.port = port
         self.dbname = dbname
         self.password = password
@@ -42,8 +42,7 @@ class DatabaseManager(object):
 
     def init(self):
         self.nq = 0
-        prop = "dbname='%s' user='pfs' password='%s' host='%s' port='%s'" % (self.dbname, self.password, self.ip,
-                                                                             self.port)
+        prop = f"dbname='{self.dbname}' user='pfs' password='{self.password}' host='{self.host}' port='{self.port}'"
         conn = psycopg2.connect(prop)
         self.conn = conn
 
