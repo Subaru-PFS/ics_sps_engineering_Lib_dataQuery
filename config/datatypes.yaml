@@ -1,0 +1,57 @@
+_data: &DATA
+  unit: '-'
+  ylabel: auto
+  yscale: linear
+  range: -inf;inf
+
+
+boolean:
+  <<: *DATA
+  ylabel: State (-)
+current:
+  <<: *DATA
+  unit: A
+flow:
+  <<: *DATA
+  unit: L/min
+humidity:
+  <<: *DATA
+  unit: '%'
+none:
+  <<: *DATA
+  ylabel: none
+  yscale: none
+percentage:
+  <<: *DATA
+  unit: '%'
+power:
+  <<: *DATA
+  unit: W
+pressure_bar:
+  <<: *DATA
+  unit: Bar
+  yscale: log
+  range: 1e-10;1e4
+  ylabel: Pressure (Bar)
+pressure_torr:
+  <<: *DATA
+  unit: Torr
+  yscale: log
+  range: 1e-10;1e4
+  ylabel: Pressure (Torr)
+speed:
+  <<: *DATA
+  unit: RPM
+temperature_c:
+  <<: *DATA
+  unit: C
+  range: -100;100
+  ylabel: Temperature (C)
+temperature_k:
+  <<: *DATA
+  unit: K
+  range: 10;360
+  ylabel: Temperature (K)
+voltage:
+  <<: *DATA
+  unit: V
