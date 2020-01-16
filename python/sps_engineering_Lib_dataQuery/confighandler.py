@@ -1,4 +1,5 @@
 import datetime as dt
+import importlib
 import os
 import pickle
 import random
@@ -12,9 +13,12 @@ except ImportError:
     import ConfigParser as configparser
 
 from sps_engineering_Lib_dataQuery.dates import all2num
+import sps_engineering_Lib_dataQuery.datatypes as datatypes
 
 confpath = os.path.join('/software/ait/', 'config')
 alarmpath = os.path.join('/software/ait/', 'alarm')
+
+importlib.reload(datatypes)
 
 
 class ConfigParser(configparser.ConfigParser):
@@ -59,23 +63,21 @@ class CurveConf(object):
         object.__init__(self)
         self.tablename = deviceConf.tablename
         self.deviceLabel = deviceConf.deviceLabel
+        self.label = deviceConf.labels[ind]
+        self.fullLabel = f'{self.deviceLabel}-{self.label}'
         self.key = deviceConf.keys[ind]
         self.type = deviceConf.types[ind]
-        self.label = deviceConf.labels[ind]
         self.unit = deviceConf.units[ind]
         self.lbound = deviceConf.lbounds[ind]
         self.ubound = deviceConf.ubounds[ind]
         self.ylabel = deviceConf.ylabels[ind]
+        self.yscale = deviceConf.yscales[ind]
         self.trange = deviceConf.ranges[ind]
-
-    @property
-    def curveLabel(self):
-        return "%s_%s" % (self.deviceLabel, self.label)
 
 
 class DevConf(object):
-    def __init__(self, tablename, keys, types, lbounds, ubounds, units, ylabels, ranges, labels=None, deviceLabel=None,
-                 botcmd=None):
+    def __init__(self, tablename, keys, types, lbounds, ubounds, units, ylabels, yscales, ranges, labels=None,
+                 deviceLabel=None, botcmd=None):
         object.__init__(self)
 
         tablename = tablename.strip()
@@ -89,6 +91,7 @@ class DevConf(object):
         ubounds = self.cleanSplit(ubounds)
         units = self.cleanSplit(units)
         ylabels = self.cleanSplit(ylabels)
+        yscales = self.cleanSplit(yscales)
         ranges = self.cleanSplit(ranges)
         labels = self.cleanSplit(labels)
 
@@ -99,6 +102,7 @@ class DevConf(object):
         self.ubounds = ubounds
         self.units = units
         self.ylabels = ylabels
+        self.yscales = yscales
         self.ranges = ranges
         self.labels = labels
         self.deviceLabel = deviceLabel.strip()
@@ -143,11 +147,8 @@ def loadConf(date=0):
 
 
 def buildPfsConf(config):
-    datatype = ConfigParser()
-    datatype.read('%s/datatype.cfg' % confpath)
-    datatype = datatype._sections
+    importlib.reload(datatypes)
     allConfig = []
-
     tablenames = [table for table in config.sections() if table != 'config_date']
 
     for tablename in tablenames:
@@ -155,9 +156,11 @@ def buildPfsConf(config):
         types = config.get(tablename, 'type')
         lbounds = config.get(tablename, 'lower_bound')
         ubounds = config.get(tablename, 'upper_bound')
-        units = ','.join([datatype[typ.strip()]['unit'] for typ in types.split(',')])
-        ylabels = ','.join([datatype[typ.strip()]['ylabel'] for typ in types.split(',')])
-        ranges = ','.join([datatype[typ.strip()]['range'] for typ in types.split(',')])
+        units = datatypes.Datatypes.getField(types, 'unit')
+        yscales = datatypes.Datatypes.getField(types, 'yscale')
+        ranges = datatypes.Datatypes.getField(types, 'range')
+        ylabels = datatypes.Datatypes.getLabel(types)
+
         labels = config.get(tablename, 'label') if 'label' in config.options(tablename) else None
         deviceLabel = config.get(tablename, 'label_device') if 'label_device' in config.options(tablename) else None
         botcmd = config.get(tablename, 'bot_cmd') if 'bot_cmd' in config.options(tablename) else None
@@ -169,12 +172,24 @@ def buildPfsConf(config):
                                  ubounds=ubounds,
                                  units=units,
                                  ylabels=ylabels,
+                                 yscales=yscales,
                                  ranges=ranges,
                                  labels=labels,
                                  deviceLabel=deviceLabel,
                                  botcmd=botcmd))
 
     return allConfig
+
+
+class SavedCurve(object):
+    def __init__(self, **kwargs):
+        for name, value in kwargs.items():
+            setattr(self, name, value)
+
+        self.unit = datatypes.Datatypes.getField(self.type, 'unit')
+        self.yscale = datatypes.Datatypes.getField(self.type, 'yscale')
+        self.trange = datatypes.Datatypes.getField(self.type, 'range')
+        self.ylabel = datatypes.Datatypes.getLabel(self.type)
 
 
 def loadAlarm():
