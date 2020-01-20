@@ -48,7 +48,7 @@ class DatabaseManager(object):
 
         return conn
 
-    def sqlRequest(self, table, cols, where='', order='', limit=''):
+    def sqlRequest(self, table, cols, where='', order='', limit='', doRaise=False):
         if self.nq > 1000:
             self.close()
 
@@ -63,7 +63,11 @@ class DatabaseManager(object):
             return np.array(cursor.fetchall())
 
         except psycopg2.InternalError:
+            if doRaise:
+                raise
+
             self.close()
+            return self.sqlRequest(table=table, cols=cols, where=where, order=order, limit=limit, doRaise=True)
 
     def pfsdata(self, table, cols='', where='', order='', limit='', convert=True, Obj=PfsData):
         joinTable = 'reply_raw inner join %s on %s.raw_id=reply_raw.id' % (table, table)

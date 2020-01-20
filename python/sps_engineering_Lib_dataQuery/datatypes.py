@@ -6,7 +6,7 @@ import yaml
 confpath = os.path.abspath(os.path.join(os.path.dirname(dataQuery.__file__), '../..', 'config'))
 
 with open(os.path.join(confpath, 'datatypes.yaml'), 'r') as cfgFile:
-    datatypes = yaml.load(cfgFile)
+    datatypes = yaml.load(cfgFile, Loader=yaml.FullLoader)
 
 
 class Datatypes(object):
