@@ -29,7 +29,11 @@ class OneData(PfsData):
 
 
 class DatabaseManager(object):
-    def __init__(self, host, port, password, dbname='archiver'):
+    def __init__(self, host=None, port=None, password=None, dbname=None):
+        host = 'db-ics' if host is None else host
+        port = 5432 if port is None else port
+        password = '' if password is None else password
+        dbname = 'archiver' if dbname is None else dbname
 
         self.host = host
         self.port = port
