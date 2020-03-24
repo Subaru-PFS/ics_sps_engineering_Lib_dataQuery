@@ -60,7 +60,6 @@ class DatabaseManager(object):
         cursor = conn.cursor()
 
         sqlQuery = """select %s from %s %s %s %s """ % (cols, table, where, order, limit)
-
         try:
             cursor.execute(sqlQuery)
             self.nq += 1
@@ -99,8 +98,8 @@ class DatabaseManager(object):
             start = 'tai>%.2f' % str2astro(start)
             end = 'and tai<%.2f' % str2astro(end) if end else ''
         else:
-            start = 'id>%i' % start
-            end = 'and id<%i' % end if end else ''
+            start = 'id>=%i' % start
+            end = 'and id<=%i' % end if end else ''
 
         where = 'where (%s %s)' % (start, end)
 
@@ -136,7 +135,7 @@ class DatabaseManager(object):
             minid, maxid = self.limitIdfromDate(date=date, reverse=reverse)
 
         order = 'order by raw_id asc' if not reverse else 'order by raw_id desc'
-        [[closestId]] = self.sqlRequest(table, 'raw_id', where='where raw_id>%i and raw_id<%i' % (minid, maxid),
+        [[closestId]] = self.sqlRequest(table, 'raw_id', where='where raw_id>=%i and raw_id<=%i' % (minid, maxid),
                                         order=order,
                                         limit='limit 1')
         return closestId
