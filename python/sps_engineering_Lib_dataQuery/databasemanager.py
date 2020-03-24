@@ -32,7 +32,7 @@ class DatabaseManager(object):
     def __init__(self, host=None, port=None, password=None, dbname=None):
         host = 'db-ics' if host is None else host
         port = 5432 if port is None else port
-        password = '' if password is None else password
+        password = '2394f4s3d' if password is None else password
         dbname = 'archiver' if dbname is None else dbname
 
         self.host = host
@@ -40,37 +40,42 @@ class DatabaseManager(object):
         self.dbname = dbname
         self.password = password
 
-        self.conn = False
         self.alarmPath = os.path.abspath(os.path.join(os.path.dirname(dataQuery.__file__), '../..', 'alarm'))
         self.configPath = os.path.abspath(os.path.join(os.path.dirname(dataQuery.__file__), '../..', 'config'))
 
-    def init(self):
-        self.nq = 0
-        prop = f"dbname='{self.dbname}' user='pfs' password='{self.password}' host='{self.host}' port='{self.port}'"
-        conn = psycopg2.connect(prop)
-        self.conn = conn
+        self.connect()
 
-        return conn
+    def connect(self):
+        self.nq = 0
+        self.conn = psycopg2.connect(dbname=self.dbname, user='pfs', password=self.password, host=self.host,
+                                     port=self.port)
+        return self.conn
+
+    def fetchall(self, query):
+        with self.connect() as conn:
+            with conn.cursor() as curs:
+                curs.execute(query)
+                return np.array(curs.fetchall())
 
     def sqlRequest(self, table, cols, where='', order='', limit='', doRaise=False):
         if self.nq > 1000:
             self.close()
 
-        conn = self.conn if self.conn else self.init()
-        cursor = conn.cursor()
+        conn = self.conn if self.conn else self.connect()
 
-        sqlQuery = """select %s from %s %s %s %s """ % (cols, table, where, order, limit)
-        try:
-            cursor.execute(sqlQuery)
-            self.nq += 1
-            return np.array(cursor.fetchall())
+        query = """select %s from %s %s %s %s """ % (cols, table, where, order, limit)
+        with conn.cursor() as curs:
+            try:
+                curs.execute(query)
+                self.nq += 1
+                return np.array(curs.fetchall())
 
-        except psycopg2.InternalError:
-            if doRaise:
-                raise
+            except psycopg2.InternalError:
+                if doRaise:
+                    raise
 
-            self.close()
-            return self.sqlRequest(table=table, cols=cols, where=where, order=order, limit=limit, doRaise=True)
+                self.close()
+                return self.sqlRequest(table=table, cols=cols, where=where, order=order, limit=limit, doRaise=True)
 
     def pfsdata(self, table, cols='', where='', order='', limit='', convert=True, Obj=PfsData):
         joinTable = 'reply_raw inner join %s on %s.raw_id=reply_raw.id' % (table, table)
