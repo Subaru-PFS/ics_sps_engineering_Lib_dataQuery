@@ -29,16 +29,12 @@ class OneData(PfsData):
 
 
 class DatabaseManager(object):
-    def __init__(self, host=None, port=None, password=None, dbname=None):
-        host = 'db-ics' if host is None else host
-        port = 5432 if port is None else port
-        password = '2394f4s3d' if password is None else password
-        dbname = 'archiver' if dbname is None else dbname
-
-        self.host = host
-        self.port = port
-        self.dbname = dbname
-        self.password = password
+    def __init__(self, host='db-ics', port=5432, password=None, dbname='archiver', user='pfs'):
+        self.prop = dict(host=host,
+                         port=port,
+                         password=password,
+                         dbname=dbname,
+                         user=user)
 
         self.alarmPath = os.path.abspath(os.path.join(os.path.dirname(dataQuery.__file__), '../..', 'alarm'))
         self.configPath = os.path.abspath(os.path.join(os.path.dirname(dataQuery.__file__), '../..', 'config'))
@@ -47,8 +43,7 @@ class DatabaseManager(object):
 
     def connect(self):
         self.nq = 0
-        self.conn = psycopg2.connect(dbname=self.dbname, user='pfs', password=self.password, host=self.host,
-                                     port=self.port)
+        self.conn = psycopg2.connect(**self.prop)
         return self.conn
 
     def fetchall(self, query):
