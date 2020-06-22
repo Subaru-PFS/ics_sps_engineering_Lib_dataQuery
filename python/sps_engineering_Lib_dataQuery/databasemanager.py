@@ -179,7 +179,7 @@ class DatabaseManager(object):
                 cols = self.allColumns(table)
                 fTables.add(table, cols)
 
-            except ValueError:
+            except:
                 pass
 
         return buildPfsConf(fTables)
