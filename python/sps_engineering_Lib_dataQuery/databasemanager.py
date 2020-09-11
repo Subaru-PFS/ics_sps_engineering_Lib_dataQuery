@@ -11,8 +11,9 @@ from sps_engineering_Lib_dataQuery.dates import astro2num, str2astro, date2astro
 
 
 class PfsData(pd.DataFrame):
-    def __init__(self, data):
-        pd.DataFrame.__init__(self, data=data)
+    def __init__(self, *args, **kwargs):
+        pd.DataFrame.__init__(self, *args, **kwargs)
+        self['id'] = self['id'].astype('int64')
 
     @property
     def strdate(self):
@@ -20,8 +21,8 @@ class PfsData(pd.DataFrame):
 
 
 class OneData(PfsData):
-    def __init__(self, data):
-        PfsData.__init__(self, data=data)
+    def __init__(self, *args, **kwargs):
+        PfsData.__init__(self, *args, **kwargs)
 
     def __getitem__(self, key):
         vals = pd.DataFrame.__getitem__(self, key)
@@ -41,74 +42,77 @@ class DatabaseManager(object):
 
         self.connect()
 
+    @property
+    def activeConn(self):
+        conn = self.conn if self.conn else self.connect()
+        return conn
+
     def connect(self):
         self.nq = 0
         self.conn = psycopg2.connect(**self.prop)
         return self.conn
 
-    def fetchall(self, query):
-        with self.connect() as conn:
-            with conn.cursor() as curs:
-                curs.execute(query)
-                return np.array(curs.fetchall())
-
-    def sqlRequest(self, table, cols, where='', order='', limit='', doRaise=False):
+    def fetchall(self, query, doRetry=True):
         if self.nq > 1000:
             self.close()
 
-        conn = self.conn if self.conn else self.connect()
-
-        query = """select %s from %s %s %s %s """ % (cols, table, where, order, limit)
-        with conn.cursor() as curs:
+        with self.activeConn.cursor() as curs:
             try:
                 curs.execute(query)
                 self.nq += 1
                 return np.array(curs.fetchall())
-
             except psycopg2.InternalError:
-                if doRaise:
-                    raise
+                if doRetry:
+                    return self.fetchall(query, doRetry=False)
+                raise
 
-                self.close()
-                return self.sqlRequest(table=table, cols=cols, where=where, order=order, limit=limit, doRaise=True)
+    def fetchone(self, query, doRetry=True):
+        if self.nq > 1000:
+            self.close()
 
-    def pfsdata(self, table, cols='', where='', order='', limit='', convert=True, Obj=PfsData):
-        joinTable = 'reply_raw inner join %s on %s.raw_id=reply_raw.id' % (table, table)
-        typedCols = [('id', '<i8'), ('tai', '<f8')] + [(str(col), '<f8') for col in cols.split(',') if col]
-        cols = ','.join([name for name, type in typedCols])
+        with self.activeConn.cursor() as curs:
+            try:
+                curs.execute(query)
+                self.nq += 1
+                return curs.fetchone()
+            except psycopg2.InternalError:
+                if doRetry:
+                    return self.fetchone(query, doRetry=False)
+                raise
 
-        rawData = self.sqlRequest(table=joinTable,
-                                  cols=cols,
-                                  where=where,
-                                  order=order,
-                                  limit=limit)
+    def dataBetween(self, table, cols, start, end=False, asId=False, convert=True):
+        rngmaxQuery = '(select id from reply_raw order by tai desc limit 1) as rngmax'
+
+        if not asId:
+            rngminQuery = '(select id from reply_raw where tai>= %.2f order by tai asc limit 1) as rngmin' % str2astro(
+                start)
+            if end:
+                rngmaxQuery = '(select id from reply_raw where tai>= %.2f order by tai asc limit 1) as rngmax' % str2astro(
+                    end)
+
+            minId, maxId = self.fetchone("""select rngmin.id, rngmax.id from %s, %s""" % (rngminQuery, rngmaxQuery))
+        else:
+            minId = int(start)
+            maxId = int(end) if end else self.fetchone("""select rngmax.id from %s""" % rngmaxQuery)[0]
+
+        dataQuery = f'select id,tai,{cols} from (select * from {table} where raw_id>={minId} and raw_id<={maxId} ) as data join reply_raw as reply on data.raw_id=reply.id order by id asc'
+        rawData = self.fetchall(dataQuery)
+
         if not rawData.size:
-            raise ValueError('no raw data : select %s from %s %s %s %s ' % (cols, joinTable, where, order, limit))
+            raise ValueError('no raw data : %s' % dataQuery)
 
         if convert:
             rawData[:, 1] = astro2num(rawData[:, 1])
 
-        data = np.array([tuple(row) for row in list(rawData)], dtype=typedCols)
-
-        return Obj(data=data)
-
-    def dataBetween(self, table, cols, start, end=False, raw_id=False):
-        if not raw_id:
-            closestId = self.closestId(table=table, date=start)
-            start = 'tai>%.2f' % str2astro(start)
-            end = 'and tai<%.2f' % str2astro(end) if end else ''
-        else:
-            start = 'id>=%i' % start
-            end = 'and id<=%i' % end if end else ''
-
-        where = 'where (%s %s)' % (start, end)
-
-        return self.pfsdata(table, cols, where=where, order='order by id asc')
+        return PfsData(rawData, columns=['id', 'tai'] + cols.split(','))
 
     def last(self, table, cols=''):
-        [[lastId]] = self.sqlRequest(cols='max(raw_id)', table=table)
+        lastRow = self.fetchall('select raw_id,%s from %s order by raw_id desc limit 1' % (cols, table))
+        lastRow = OneData(lastRow, columns=['id'] + cols.split(','))
         try:
-            return self.pfsdata(table, cols=cols, where='where id=%d' % lastId, Obj=OneData)
+            tai, = self.fetchone('select tai from reply_raw where id=%d' % lastRow.id)
+            lastRow['tai'] = astro2num(tai)
+            return lastRow
         except ValueError:
             time.sleep(0.02)
             return self.last(table=table, cols=cols)
@@ -118,45 +122,35 @@ class DatabaseManager(object):
         datenum = date2astro(date)
         mintai, maxtai = (datenum, datenum + 86400) if not reverse else (datenum - 86400, datenum)
 
-        [[minid]] = self.sqlRequest('reply_raw', 'id',
-                                    where='where tai>%.2f and tai<%.2f' % (mintai, maxtai),
-                                    limit='limit 1')
+        minId, = self.fetchone(
+            'select id from reply_raw where tai>%.2f and tai<%.2f order by tai asc limit 1' % (mintai, maxtai))
+        maxId, = self.fetchone(
+            'select id from reply_raw where tai>%.2f and tai<%.2f order by tai desc limit 1' % (mintai, maxtai))
 
-        [[maxid]] = self.sqlRequest('reply_raw', 'id',
-                                    where='where tai>%.2f and tai<%.2f' % (mintai, maxtai),
-                                    order='order by tai desc',
-                                    limit='limit 1')
-        return minid, maxid
+        return minId, maxId
 
-    def closestId(self, table, limitIds=None, date=False, reverse=False):
-        if not date:
-            minid, maxid = limitIds
-        else:
-            minid, maxid = self.limitIdfromDate(date=date, reverse=reverse)
+    def idFromDate(self, table, date, reverse=False):
+        minId, maxId = self.limitIdfromDate(date=date, reverse=reverse)
+        return self.closestId(table, minId, maxId, reverse)
 
-        order = 'order by raw_id asc' if not reverse else 'order by raw_id desc'
-        [[closestId]] = self.sqlRequest(table, 'raw_id', where='where raw_id>=%i and raw_id<=%i' % (minid, maxid),
-                                        order=order,
-                                        limit='limit 1')
+    def closestId(self, table, minId, maxId, reverse=False):
+        order = 'asc' if not reverse else 'desc'
+        closestId, = self.fetchone(
+            'select raw_id from %s where raw_id>=%i and raw_id<=%i order by raw_id %s limit 1' % (
+            table, minId, maxId, order))
         return closestId
 
     def allTables(self):
-        cols = 'table_name'
-        table = 'information_schema.tables'
-        where = "where table_schema='public'"
-
         ignore = ['reply_raw', 'reply_hdr', 'actors', 'cmds', 'hub']
-        array = self.sqlRequest(table=table, cols=cols, where=where)
+        array = self.fetchall("select table_name from information_schema.tables where table_schema='public'")
 
         allTable = [table[0] for table in array if table[0].split('__')[0] not in ignore]
 
         return allTable
 
     def allColumns(self, tablename):
-        cols = 'column_name'
-        table = 'information_schema.columns'
-        where = "where (table_schema='public' AND table_name='%s' and data_type !='text' and column_name!='raw_id')" % tablename
-        array = self.sqlRequest(table=table, cols=cols, where=where)
+        where = "(table_schema='public' AND table_name='%s' and data_type !='text' and column_name!='raw_id')" % tablename
+        array = self.fetchall("select column_name from information_schema.columns where %s" % where)
 
         allCols = [col[0] for col in array]
         if allCols:
@@ -169,13 +163,13 @@ class DatabaseManager(object):
         fTables = DummyConf()
 
         try:
-            limitIds = self.limitIdfromDate(date=date)
+            minId, maxId = self.limitIdfromDate(date=date)
         except ValueError:
-            allTables = []
+            return buildPfsConf(fTables)
 
         for table in allTables:
             try:
-                closestId = self.closestId(table=table, limitIds=limitIds)
+                closestId = self.closestId(table, minId=minId, maxId=maxId)
                 cols = self.allColumns(table)
                 fTables.add(table, cols)
 
