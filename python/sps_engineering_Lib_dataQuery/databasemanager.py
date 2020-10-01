@@ -31,7 +31,7 @@ class OneData(PfsData):
 
 
 class DatabaseManager(object):
-    def __init__(self, host='db-ics', port=5432, password=None, dbname='archiver', user='pfs'):
+    def __init__(self, host='db-ics', port=5432, password=None, dbname='archiver', user='pfs', doConnect=True):
         self.prop = dict(host=host,
                          port=port,
                          password=password,
@@ -41,7 +41,8 @@ class DatabaseManager(object):
         self.alarmPath = os.path.abspath(os.path.join(os.path.dirname(dataQuery.__file__), '../..', 'alarm'))
         self.configPath = os.path.abspath(os.path.join(os.path.dirname(dataQuery.__file__), '../..', 'config'))
 
-        self.connect()
+        if doConnect:
+            self.connect()
 
     @property
     def activeConn(self):
@@ -166,7 +167,7 @@ class DatabaseManager(object):
 
         try:
             minId, maxId = self.limitIdfromDate(date=date)
-        except ValueError:
+        except (ValueError, TypeError):
             return buildPfsConf(fTables)
 
         for table in allTables:
