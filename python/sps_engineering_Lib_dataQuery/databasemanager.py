@@ -13,6 +13,7 @@ from sps_engineering_Lib_dataQuery.dates import astro2num, str2astro, date2astro
 class PfsData(pd.DataFrame):
     def __init__(self, *args, **kwargs):
         pd.DataFrame.__init__(self, *args, **kwargs)
+        self.fillna(value=np.nan, inplace=True)
         self['id'] = self['id'].astype('int64')
 
     @property
@@ -95,7 +96,9 @@ class DatabaseManager(object):
             minId = int(start)
             maxId = int(end) if end else self.fetchone("""select rngmax.id from %s""" % rngmaxQuery)[0]
 
-        dataQuery = f'select id,tai,{cols} from (select * from {table} where raw_id>={minId} and raw_id<={maxId} ) as data join reply_raw as reply on data.raw_id=reply.id order by id asc'
+        dataQuery = f'select id,tai,{cols} from (select * from {table} where raw_id>={minId} and raw_id<={maxId} ) ' \
+                    f'as data join reply_raw as reply on data.raw_id=reply.id order by id asc'
+
         rawData = self.fetchall(dataQuery)
 
         if not rawData.size:
@@ -122,10 +125,10 @@ class DatabaseManager(object):
         datenum = date2astro(date)
         mintai, maxtai = (datenum, datenum + 86400) if not reverse else (datenum - 86400, datenum)
 
-        minId, = self.fetchone(
-            'select id from reply_raw where tai>%.2f and tai<%.2f order by tai asc limit 1' % (mintai, maxtai))
-        maxId, = self.fetchone(
-            'select id from reply_raw where tai>%.2f and tai<%.2f order by tai desc limit 1' % (mintai, maxtai))
+        minId, = self.fetchone('select id from reply_raw where tai>%.2f and '
+                               'tai<%.2f order by tai asc limit 1' % (mintai, maxtai))
+        maxId, = self.fetchone('select id from reply_raw where tai>%.2f and '
+                               'tai<%.2f order by tai desc limit 1' % (mintai, maxtai))
 
         return minId, maxId
 
@@ -135,9 +138,8 @@ class DatabaseManager(object):
 
     def closestId(self, table, minId, maxId, reverse=False):
         order = 'asc' if not reverse else 'desc'
-        closestId, = self.fetchone(
-            'select raw_id from %s where raw_id>=%i and raw_id<=%i order by raw_id %s limit 1' % (
-            table, minId, maxId, order))
+        closestId, = self.fetchone('select raw_id from %s where raw_id>=%i '
+                                   'and raw_id<=%i order by raw_id %s limit 1' % (table, minId, maxId, order))
         return closestId
 
     def allTables(self):
