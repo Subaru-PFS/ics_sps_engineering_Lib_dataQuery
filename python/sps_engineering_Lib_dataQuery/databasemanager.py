@@ -82,20 +82,9 @@ class DatabaseManager(object):
                     return self.fetchone(query, doRetry=False)
                 raise
 
-    def dataBetween(self, table, cols, start, end=False, asId=False, convert=True):
-        rngmaxQuery = '(select id from reply_raw order by tai desc limit 1) as rngmax'
-
-        if not asId:
-            rngminQuery = '(select id from reply_raw where tai>= %.2f order by tai asc limit 1) as rngmin' % str2astro(
-                start)
-            if end:
-                rngmaxQuery = '(select id from reply_raw where tai>= %.2f order by tai asc limit 1) as rngmax' % str2astro(
-                    end)
-
-            minId, maxId = self.fetchone("""select rngmin.id, rngmax.id from %s, %s""" % (rngminQuery, rngmaxQuery))
-        else:
-            minId = int(start)
-            maxId = int(end) if end else self.fetchone("""select rngmax.id from %s""" % rngmaxQuery)[0]
+    def dataBetweenId(self, table, cols, minId, maxId=False, convert=True):
+        minId = int(minId)
+        maxId, maxTai = self.fetchone(self.rangeMax(end=False)) if not maxId else (int(maxId), -1)
 
         dataQuery = f'select id,tai,{cols} from (select * from {table} where raw_id>={minId} and raw_id<={maxId} ) ' \
                     f'as data join reply_raw as reply on data.raw_id=reply.id order by id asc'
@@ -109,6 +98,23 @@ class DatabaseManager(object):
             rawData[:, 1] = astro2num(rawData[:, 1])
 
         return PfsData(rawData, columns=['id', 'tai'] + cols.split(','))
+
+    def rangeMax(self, end=False):
+        query = 'select id,tai from reply_raw order by id desc limit 1'
+        maxId, maxTai = self.fetchone(query)
+        if end:
+            endTai = str2astro(end)
+            if endTai < maxTai:
+                query = f'select id,tai from reply_raw where tai>={endTai} order by tai asc limit 1'
+
+        return query
+
+    def dataBetween(self, table, cols, start, end=False, convert=True):
+        rngminQuery = f'(select id from reply_raw where tai>={str2astro(start)} order by tai asc limit 1) as rngmin'
+        rngmaxQuery = f'({self.rangeMax(end=end)}) as rngmax'
+
+        minId, maxId = self.fetchone("""select rngmin.id, rngmax.id from %s, %s""" % (rngminQuery, rngmaxQuery))
+        return self.dataBetweenId(table, cols, minId, maxId=maxId, convert=convert)
 
     def last(self, table, cols=''):
         lastRow = self.fetchall('select raw_id,%s from %s order by raw_id desc limit 1' % (cols, table))
