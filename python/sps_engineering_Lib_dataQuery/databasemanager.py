@@ -62,11 +62,14 @@ class DatabaseManager(object):
             try:
                 curs.execute(query)
                 self.nq += 1
-                return np.array(curs.fetchall())
-            except psycopg2.InternalError:
+
+            except Exception as e:
+                self.activeConn.rollback()
                 if doRetry:
                     return self.fetchall(query, doRetry=False)
                 raise
+
+            return np.array(curs.fetchall())
 
     def fetchone(self, query, doRetry=True):
         if self.nq > 1000:
@@ -76,11 +79,14 @@ class DatabaseManager(object):
             try:
                 curs.execute(query)
                 self.nq += 1
-                return curs.fetchone()
-            except psycopg2.InternalError:
+
+            except Exception as e:
+                self.activeConn.rollback()
                 if doRetry:
                     return self.fetchone(query, doRetry=False)
                 raise
+
+            return curs.fetchone()
 
     def dataBetweenId(self, table, cols, minId, maxId=False, convert=True):
         minId = int(minId)
