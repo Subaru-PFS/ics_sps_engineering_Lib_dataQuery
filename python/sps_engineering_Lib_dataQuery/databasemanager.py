@@ -156,12 +156,19 @@ class DatabaseManager(object):
         return closestId
 
     def allTables(self):
-        ignore = ['reply_raw', 'reply_hdr', 'actors', 'cmds', 'hub']
-        array = self.fetchall("select table_name from information_schema.tables where table_schema='public'")
+        """ get all relevant tables from archiver. """
 
-        allTable = [table[0] for table in array if table[0].split('__')[0] not in ignore]
+        def actorFromTable(table):
+            actor, tablename = table.split('__')
+            return actor
 
-        return allTable
+        def isRelevant(table):
+            return '__' in table and actorFromTable(table) not in ['cmds', 'hub']
+
+        tableArray = self.fetchall("select table_name from information_schema.tables where table_schema='public'")
+        allTables = [table for table in list(tableArray.ravel()) if isRelevant(table)]
+        allTables.sort()
+        return allTables
 
     def allColumns(self, tablename):
         where = "(table_schema='public' AND table_name='%s' and data_type !='text' and column_name!='raw_id')" % tablename
