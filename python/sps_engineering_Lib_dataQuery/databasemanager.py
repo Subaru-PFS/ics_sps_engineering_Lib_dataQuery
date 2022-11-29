@@ -200,6 +200,13 @@ class DatabaseManager(object):
 
         return buildPfsConf(fTables)
 
+    def getDataType(self, tableName, columnName):
+        """Return datatype for given tableName.columnName."""
+        [dataType] = self.fetchone(
+            "SELECT data_type FROM information_schema.columns "
+            f"WHERE table_name='{tableName}' AND column_name='{columnName}'""")
+        return dataType
+
     def close(self):
         try:
             self.conn.close()
