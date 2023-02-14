@@ -92,8 +92,8 @@ class DatabaseManager(object):
         minId = int(minId)
         maxId, maxTai = self.fetchone(self.rangeMax(end=False)) if not maxId else (int(maxId), -1)
 
-        dataQuery = f'select id,tai,{cols} from (select * from {table} where raw_id>={minId} and raw_id<={maxId} ) ' \
-                    f'as data join reply_raw as reply on data.raw_id=reply.id order by id asc'
+        dataQuery = f'select id,tai,{cols} from (select * from {table} where raw_id>={minId} and raw_id<={maxId}) ' \
+                    f'as data join (select * from reply_raw where id>={minId} and id<={maxId}) as reply on data.raw_id=reply.id'
 
         rawData = self.fetchall(dataQuery)
 
@@ -103,7 +103,7 @@ class DatabaseManager(object):
         if convert:
             rawData[:, 1] = astro2num(rawData[:, 1])
 
-        return PfsData(rawData, columns=['id', 'tai'] + cols.split(','))
+        return PfsData(rawData, columns=['id', 'tai'] + cols.split(',')).sort_values("tai")
 
     def rangeMax(self, end=False):
         query = 'select id,tai from reply_raw order by id desc limit 1'
