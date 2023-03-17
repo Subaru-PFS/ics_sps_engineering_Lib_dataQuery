@@ -159,7 +159,7 @@ class DatabaseManager(object):
         """ get all relevant tables from archiver. """
 
         def actorFromTable(table):
-            actor, tablename = table.split('__')
+            actor, tablename = table.split('__', 1)
             return actor
 
         def isRelevant(table):
