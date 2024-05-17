@@ -155,15 +155,19 @@ class DatabaseManager(object):
                                    'and raw_id<=%i order by raw_id %s limit 1' % (table, minId, maxId, order))
         return closestId
 
-    def allTables(self):
+    def allTables(self, ignoreActors=None):
         """Get all relevant tables from archiver."""
+        hardIgnore = ['cmds', 'hub', 'alerts']
+        default = ['dcb', 'dcb2', 'pfilamps', 'sps', 'iic', 'ag', 'agcc', 'fps', 'mcs', 'drp', 'drp2']
+        ignoreActors = default if ignoreActors is None else ignoreActors
+        ignoreActors += hardIgnore
 
         def actorFromTable(table):
             actor, tablename = table.split('__', 1)
             return actor
 
         def isRelevant(table):
-            return '__' in table and actorFromTable(table) not in ['cmds', 'hub', 'alerts']
+            return '__' in table and actorFromTable(table) not in set(ignoreActors)
 
         tableArray = self.fetchall("select table_name from information_schema.tables where table_schema='public'")
         allTables = [table for table in list(tableArray.ravel()) if isRelevant(table)]
@@ -181,8 +185,8 @@ class DatabaseManager(object):
         else:
             raise ValueError('No columns')
 
-    def pollDbConf(self, date):
-        allTables = self.allTables()
+    def pollDbConf(self, date, ignoreActors=None):
+        allTables = self.allTables(ignoreActors=ignoreActors)
         fTables = DummyConf()
 
         try:
