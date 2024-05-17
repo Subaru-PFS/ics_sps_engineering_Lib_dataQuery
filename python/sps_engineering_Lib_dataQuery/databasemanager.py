@@ -1,10 +1,9 @@
-import os
-import time
-
 import numpy as np
+import os
 import pandas as pd
 import psycopg2
 import sps_engineering_Lib_dataQuery as dataQuery
+import time
 from matplotlib.dates import num2date
 from sps_engineering_Lib_dataQuery.confighandler import DummyConf, buildPfsConf
 from sps_engineering_Lib_dataQuery.dates import astro2num, str2astro, date2astro
@@ -134,7 +133,7 @@ class DatabaseManager(object):
             return self.last(table=table, cols=cols)
 
     def limitIdfromDate(self, date, reverse=False):
-
+        """Get the min and max IDs from the database based on the given date."""
         datenum = date2astro(date)
         mintai, maxtai = (datenum, datenum + 86400) if not reverse else (datenum - 86400, datenum)
 
@@ -150,20 +149,21 @@ class DatabaseManager(object):
         return self.closestId(table, minId, maxId, reverse)
 
     def closestId(self, table, minId, maxId, reverse=False):
+        """Get the closest ID to the given min and max IDs for the given table."""
         order = 'asc' if not reverse else 'desc'
         closestId, = self.fetchone('select raw_id from %s where raw_id>=%i '
                                    'and raw_id<=%i order by raw_id %s limit 1' % (table, minId, maxId, order))
         return closestId
 
     def allTables(self):
-        """ get all relevant tables from archiver. """
+        """Get all relevant tables from archiver."""
 
         def actorFromTable(table):
             actor, tablename = table.split('__', 1)
             return actor
 
         def isRelevant(table):
-            return '__' in table and actorFromTable(table) not in ['cmds', 'hub']
+            return '__' in table and actorFromTable(table) not in ['cmds', 'hub', 'alerts']
 
         tableArray = self.fetchall("select table_name from information_schema.tables where table_schema='public'")
         allTables = [table for table in list(tableArray.ravel()) if isRelevant(table)]
@@ -171,6 +171,7 @@ class DatabaseManager(object):
         return allTables
 
     def allColumns(self, tablename):
+        """Get all columns from the database for the given table."""
         where = "(table_schema='public' AND table_name='%s' and data_type !='text' and column_name!='raw_id')" % tablename
         array = self.fetchall("select column_name from information_schema.columns where %s" % where)
 
