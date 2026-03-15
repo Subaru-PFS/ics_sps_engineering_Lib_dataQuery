@@ -1,5 +1,4 @@
 import datetime as dt
-from datetime import datetime
 
 from matplotlib.dates import date2num, num2date
 
@@ -27,7 +26,7 @@ def num2astro(datenum):
 
 
 def astro2num(astrotime):
-    return (astrotime / 86400) - 50000 + date2num(datetime(1995, 10, 10))
+    return (astrotime / 86400) - 50000 + date2num(dt.datetime(1995, 10, 10))
 
 
 def astro2date(astrotime):

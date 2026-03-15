@@ -1,3 +1,4 @@
+import configparser
 import datetime as dt
 import importlib
 import os
@@ -6,19 +7,16 @@ import random
 import time
 
 import numpy as np
-
-import configparser
-
-from sps_engineering_Lib_dataQuery.dates import all2num
 import sps_engineering_Lib_dataQuery.datatypes as datatypes
+from sps_engineering_Lib_dataQuery.dates import all2num
 
 confpath = os.path.join('/software/ait/', 'config')
 alarmpath = os.path.join('/software/ait/', 'alarm')
 
 importlib.reload(datatypes)
 
-
 ConfigParser = configparser.ConfigParser
+
 
 class DummyConf(dict):
     def __init__(self):
