@@ -7,10 +7,7 @@ import time
 
 import numpy as np
 
-try:
-    import configparser
-except ImportError:
-    import ConfigParser as configparser
+import configparser
 
 from sps_engineering_Lib_dataQuery.dates import all2num
 import sps_engineering_Lib_dataQuery.datatypes as datatypes
@@ -21,12 +18,7 @@ alarmpath = os.path.join('/software/ait/', 'alarm')
 importlib.reload(datatypes)
 
 
-class ConfigParser(configparser.ConfigParser):
-    def __init__(self, *args, **kwargs):
-        configparser.ConfigParser.__init__(self, *args, **kwargs)
-        if not hasattr(self, 'read_file'):
-            self.read_file = self.readfp
-
+ConfigParser = configparser.ConfigParser
 
 class DummyConf(dict):
     def __init__(self):
@@ -122,7 +114,7 @@ def getConfigParser(date=0.):
     all_file = [f for f in next(os.walk(confpath))[-1] if '.cfg' in f]
     for f in all_file:
         config = ConfigParser()
-        config.read_file(open('%s/%s' % (confpath, f)))
+        config.read(os.path.join(confpath, f))
         try:
             date = config.get('config_date', 'date')
             configFiles.append((f, datenum - all2num(dt.datetime.strptime(date, "%Y-%m-%d"))))
@@ -136,7 +128,7 @@ def getConfigParser(date=0.):
 
     file = configFiles[ind][0]
     config = ConfigParser()
-    config.read_file(open('%s/%s' % (confpath, file)))
+    config.read(os.path.join(confpath, file))
 
     return config
 
@@ -198,7 +190,7 @@ def loadAlarm():
 
     for actor, mode in list(modes.items()):
         config = ConfigParser()
-        config.read_file(open('%s/%s.cfg' % (alarmpath, mode)))
+        config.read(os.path.join(alarmpath, f'{mode}.cfg'))
         sections = [a for a in config.sections() if actor in config.get(a, 'tablename')]
 
         for label in sections:
@@ -236,17 +228,17 @@ def writeTimeout(mode):
     doPickle('%s/timeout.pickle' % alarmpath, mode)
 
 
-def unPickle(filepath):
+def unPickle(filepath, _retries=10):
     try:
         with open(filepath, 'rb') as thisFile:
-            unpickler = pickle.Unpickler(thisFile)
-            return unpickler.load()
+            return pickle.load(thisFile)
     except EOFError:
+        if _retries <= 0:
+            raise
         time.sleep(0.1 + random.random())
-        return unPickle(filepath=filepath)
+        return unPickle(filepath, _retries=_retries - 1)
 
 
 def doPickle(filepath, var):
     with open(filepath, 'wb') as thisFile:
-        pickler = pickle.Pickler(thisFile, protocol=2)
-        pickler.dump(var)
+        pickle.dump(var, thisFile, protocol=pickle.HIGHEST_PROTOCOL)

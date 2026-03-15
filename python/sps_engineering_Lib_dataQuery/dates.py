@@ -35,8 +35,8 @@ def astro2date(astrotime):
 
 
 def date2astro(date):
-    datetime = str2date(date) if isinstance(date, str) else date
-    return num2astro(date2num(datetime))
+    parsed = str2date(date) if isinstance(date, str) else date
+    return num2astro(date2num(parsed))
 
 
 def all2num(date, redo=True):
@@ -45,8 +45,8 @@ def all2num(date, redo=True):
     if isinstance(date, int):
         return date
     elif isinstance(date, str):
-        datetime = str2date(date)
-        return date2num(datetime)
+        parsed = str2date(date)
+        return date2num(parsed)
     elif isinstance(date, dt.datetime):
         return date2num(date)
     else:
